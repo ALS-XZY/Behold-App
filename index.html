@@ -58,6 +58,21 @@
         .record-btn-inner { width: 65px; height: 65px; background: var(--accent); border-radius: 50%; transition: 0.3s; }
         .recording .record-btn-inner { width: 30px; height: 30px; border-radius: 8px; }
         .btn-side { padding: 12px 20px; border-radius: 25px; border: 2px solid rgba(255,255,255,0.6); background: rgba(0,0,0,0.4); color: white; font-size: 14px; backdrop-filter: blur(10px); }
+
+        .system-status-pill {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 59, 48, 0.9);
+            padding: 2px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: bold; z-index: 150;
+            display: none; animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        #export-area {
+            margin-top: 15px; text-align: left;
+            background: rgba(255,255,255,0.05);
+            padding: 10px; border-radius: 12px; font-size: 13px; color: #ccc;
+        }
     </style>
 </head>
 <body>
@@ -69,6 +84,8 @@
     </div>
 
     <video id="video-bg" autoplay playsinline muted></video>
+
+    <div id="recording-pill" class="system-status-pill">● REC</div>
     
     <div class="prompter-container">
         <div id="prompter-content">
@@ -98,6 +115,7 @@
         let startTime;
 
         let history = JSON.parse(localStorage.getItem('behold_history') || '[]');
+        let achievementList = JSON.parse(localStorage.getItem('behold_achievements_list') || '[]');
 
         window.onload = () => {
             const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
@@ -158,6 +176,7 @@
         function toggleRecord() {
             document.body.classList.toggle('recording');
             const isRecording = document.body.classList.contains('recording');
+            document.getElementById('recording-pill').style.display = isRecording ? 'block' : 'none';
             
             if(isRecording) {
                 startTime = Date.now();
@@ -177,29 +196,63 @@
 
         function stopRecord() {
             clearInterval(scrollInterval);
+            document.getElementById('recording-pill').style.display = 'none';
+            
             const duration = Math.floor((Date.now() - startTime) / 1000);
-            const score = Math.min(100, 70 + Math.random() * 30).toFixed(0);
+            const score = Math.min(100, 75 + Math.random() * 25).toFixed(0);
             
-            const record = { date: new Date().toLocaleDateString(), duration, score };
-            history.push(record);
-            localStorage.setItem('behold_history', JSON.stringify(history));
+            const aiSuggestion = generateAISuggestion(duration);
             
-            showGrowthTrack(record);
+            const newEntry = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                duration,
+                score,
+                suggestion: aiSuggestion
+            };
+            achievementList.push(newEntry);
+            localStorage.setItem('behold_achievements_list', JSON.stringify(achievementList));
+            
+            showGrowthTrack(newEntry);
         }
 
-        function showGrowthTrack(lastRecord) {
+        function generateAISuggestion(duration) {
+            const hooks = [
+                "为什么 99% 的人都会在这一步失败？",
+                "这是我今天发现最离谱的事...",
+                "如果你也想改变，请听我说完这 30 秒。"
+            ];
+            const hook = hooks[Math.floor(Math.random() * hooks.length)];
+            
+            return `【标题建议】: ${hook}\n\n【运营文案】: 记录下这一刻的思考。录制时长 ${duration}s，情绪饱满。建议在第 5 秒加入画面切屏动画。#君临奇境 #Behold #数字孪生`;
+        }
+
+        function showGrowthTrack(entry) {
             const track = document.getElementById('growth-track');
             track.style.display = 'flex';
             track.innerHTML = `
                 <div class="achievement-card">
-                    <h2 style="color:var(--ai-green)">✨ 成就达成！</h2>
-                    <p>本次录制时长：${lastRecord.duration} 秒</p>
-                    <p>AI 表现评分：<span style="font-size:32px">${lastRecord.score}</span></p>
-                    <hr style="border:0.5px solid #333; margin:20px 0">
-                    <p style="font-size:14px; color:#aaa">成长轨迹：已记录 ${history.length} 次奇境降临</p>
-                    <button onclick="closeTrack()" style="margin-top:20px; padding:10px 30px; border-radius:20px; border:none; background:var(--ai-green); font-weight:bold;">继续进化</button>
+                    <h2 style="color:var(--ai-green)">🎬 录制圆满完成</h2>
+                    <p style="font-size:14px">"观众已通过你的视角看见了世界"</p>
+                    <div style="display:flex; justify-content:space-around; margin: 20px 0;">
+                        <div><small>时长</small><br><strong>${entry.duration}s</strong></div>
+                        <div><small>表现分</small><br><strong style="color:var(--ai-green)">${entry.score}</strong></div>
+                    </div>
+                    <div id="export-area">
+                        <p style="color:var(--ai-green); margin-bottom:5px;">💡 AI 优化文案已生成：</p>
+                        <div id="copy-text" style="font-family:monospace;">${entry.suggestion.replace(/\n/g, '<br>')}</div>
+                        <button onclick="copyToClipboard()" style="margin-top:10px; background:none; border:1px solid #555; color:#fff; padding:5px 10px; border-radius:8px; font-size:12px;">复制建议文案</button>
+                    </div>
+                    <button onclick="closeTrack()" style="margin-top:20px; width:100%; padding:15px; border-radius:15px; border:none; background:var(--ai-green); font-weight:bold; color:#000;">保存并返回奇境</button>
                 </div>
             `;
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('copy-text').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert("文案已复制到剪贴板，快去发布吧！");
+            });
         }
 
         function closeTrack() {
