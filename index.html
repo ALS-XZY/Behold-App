@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Behold - 君临奇境</title>
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
@@ -141,53 +142,76 @@
     </div>
 
     <script>
-        // 1. 处理拖拽逻辑 (移动端 Touch)
-        const bubble = document.getElementById('bubble');
-        let active = false;
-        let currentX;
-        let currentY;
-        let initialX;
-        let initialY;
-        let xOffset = 0;
-        let yOffset = 0;
+        // 1. 拖拽逻辑 (保持不变)
+const bubble = document.getElementById('bubble');
+let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+bubble.addEventListener("touchstart", dragStart, false);
+bubble.addEventListener("touchend", dragEnd, false);
+bubble.addEventListener("touchmove", drag, false);
+function dragStart(e) { initialX = e.touches[0].clientX - xOffset; initialY = e.touches[0].clientY - yOffset; if (e.target === bubble) active = true; }
+function drag(e) { if (active) { e.preventDefault(); currentX = e.touches[0].clientX - initialX; currentY = e.touches[0].clientY - initialY; xOffset = currentX; yOffset = currentY; setTranslate(currentX, currentY, bubble); } }
+function setTranslate(xPos, yPos, el) { el.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)"; }
+function dragEnd() { active = false; }
 
-        bubble.addEventListener("touchstart", dragStart, false);
-        bubble.addEventListener("touchend", dragEnd, false);
-        bubble.addEventListener("touchmove", drag, false);
+// 2. 核心：摄像头调用逻辑 (New!)
+async function initCameras() {
+    const canvas = document.getElementById('camera-canvas');
+    const bubble = document.getElementById('bubble');
 
-        function dragStart(e) {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-            if (e.target === bubble) active = true;
-        }
+    try {
+        // 创建两个视频元素
+        const bgVideo = document.createElement('video');
+        const bubbleVideo = document.createElement('video');
 
-        function drag(e) {
-            if (active) {
-                e.preventDefault();
-                currentX = e.touches[0].clientX - initialX;
-                currentY = e.touches[0].clientY - initialY;
-                xOffset = currentX;
-                yOffset = currentY;
-                setTranslate(currentX, currentY, bubble);
-            }
-        }
+        // 配置视频属性
+        [bgVideo, bubbleVideo].forEach(v => {
+            v.setAttribute('autoplay', '');
+            v.setAttribute('playsinline', '');
+            v.style.width = '100%';
+            v.style.height = '100%';
+            v.style.objectFit = 'cover';
+        });
 
-        function setTranslate(xPos, yPos, el) {
-            el.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
-        }
+        // 获取所有摄像头设备
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
-        function dragEnd() {
-            active = false;
-        }
+        // 尝试获取前置和后置流
+        // 提示：部分浏览器限制同时开启两个摄像头，我们会先尝试开启前置放入气泡
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "user" }, // 先拿前置做测试
+            audio: true 
+        });
+        
+        bubbleVideo.srcObject = stream;
+        bubble.innerHTML = ''; // 清除文字
+        bubble.appendChild(bubbleVideo);
 
-        // 2. 录制按钮切换
-        let isRecording = false;
-        function toggleRecord() {
-            isRecording = !isRecording;
-            document.body.classList.toggle('recording');
-            const label = document.getElementById('bg-label');
-            label.innerText = isRecording ? "🔴 正在通过数字视窗观测世界..." : "已停止。准备好下一次降临了吗？";
-        }
+        // 如果想让背景也显示内容（比如后置），这里需要处理逻辑切换
+        // 目前先让背景保持黑色以节省性能，或者镜像前置流
+        const bgStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: { exact: "environment" } } 
+        }).catch(() => stream); // 如果没后置就用前置
+
+        bgVideo.srcObject = bgStream;
+        canvas.innerHTML = '';
+        canvas.appendChild(bgVideo);
+
+    } catch (err) {
+        console.error("镜头启动失败: ", err);
+        alert("请确保在 HTTPS 环境下运行并允许摄像头权限");
+    }
+}
+
+// 3. 录制与启动
+let isRecording = false;
+function toggleRecord() {
+    isRecording = !isRecording;
+    document.body.classList.toggle('recording');
+    if(isRecording) {
+        initCameras(); // 点击录制时请求权限并启动
+    }
+}
     </script>
 </body>
 </html>
