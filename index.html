@@ -8,13 +8,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        /* 保持之前的样式，增加一个安全提示层 */
         :root { --accent: #ff3b30; --ai-green: #00ff88; }
         body { margin: 0; background: #000; color: white; font-family: -apple-system; overflow: hidden; height: 100vh; }
         
         #video-bg { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; background: #111; }
         
-        /* 安全提示层 */
         #security-overlay {
             position: fixed; inset: 0; z-index: 999;
             background: rgba(0,0,0,0.9);
@@ -29,12 +27,31 @@
         }
         #prompter-content { font-size: 26px; line-height: 1.5; color: var(--ai-green); transition: transform 0.2s linear; }
 
-        .bubble-window {
-            position: absolute; width: 130px; height: 130px; border-radius: 50%;
-            border: 2px solid var(--ai-green); z-index: 50; bottom: 130px; right: 20px;
-            overflow: hidden; box-shadow: 0 0 15px var(--ai-green);
+        #growth-track {
+            position: fixed; inset: 0; z-index: 200;
+            background: rgba(0,0,0,0.95);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(20px);
         }
-        #video-bubble { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .achievement-card {
+            background: linear-gradient(145deg, #1e1e1e, #111);
+            padding: 30px; border-radius: 24px; border: 1px solid var(--ai-green);
+            text-align: center; width: 80%;
+        }
+
+        .bubble-window {
+            position: absolute; width: 130px; height: 130px;
+            border-radius: 50% 50% 50% 5%;
+            border: 2px solid var(--ai-green); z-index: 50; bottom: 130px; right: 20px;
+            overflow: hidden; box-shadow: 0 0 20px rgba(0,255,136,0.2);
+            background: #000;
+        }
+
+        .visualizer {
+            display: flex; align-items: center; justify-content: center; gap: 3px; height: 100%;
+        }
+        .bar { width: 4px; background: var(--ai-green); border-radius: 2px; animation: glow 1s infinite; }
+        @keyframes glow { 0%, 100% { height: 10px; } 50% { height: 40px; } }
 
         .controls { position: fixed; bottom: 40px; width: 100%; display: flex; justify-content: space-around; align-items: center; z-index: 100; }
         .record-btn { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; display: flex; justify-content: center; align-items: center; background: none; }
@@ -71,15 +88,17 @@
         <button class="btn-side" onclick="switchCamera()">🔄 切换</button>
     </div>
 
+    <div id="growth-track"></div>
+
     <script>
-        // 状态管理
         let currentStream = null;
-        let currentFacingMode = "user"; // 默认先开前置，口播更常用
+        let currentFacingMode = "user";
         let scrollPos = 0;
         let scrollInterval;
         let startTime;
 
-        // 1. 页面加载自检：只检测环境，不请求权限
+        let history = JSON.parse(localStorage.getItem('behold_history') || '[]');
+
         window.onload = () => {
             const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
             const desc = document.getElementById('security-desc');
@@ -90,7 +109,7 @@
                 desc.style.color = "#ff3b30";
             } else {
                 desc.innerText = "✨ 环境已就绪";
-                btn.style.display = "block"; // 只在环境安全时显示进入按钮
+                btn.style.display = "block";
             }
 
             if ('serviceWorker' in navigator) {
@@ -98,93 +117,99 @@
             }
         };
 
-        // 2. 初始化系统：必须由用户点击触发 (Critical Fix)
         async function initSystem() {
-            try {
-                // 先隐藏遮罩层，让用户感知到进入了应用
-                document.getElementById('security-overlay').style.opacity = "0";
-                setTimeout(() => {
-                    document.getElementById('security-overlay').style.display = "none";
-                }, 300);
-
-                // 核心：请求权限
-                await startCamera(currentFacingMode);
-                console.log("系统启动成功");
-            } catch (err) {
-                alert("授权失败，请刷新并允许摄像头访问: " + err);
-            }
+            document.getElementById('security-overlay').style.opacity = "0";
+            setTimeout(() => { document.getElementById('security-overlay').style.display = "none"; }, 300);
+            await startCamera(currentFacingMode);
         }
 
-        // 3. 摄像头调度引擎
         async function startCamera(mode) {
-            // 如果已有流，先关掉释放硬件，防止 iOS 冲突
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
-
-            const constraints = {
-                video: {
-                    facingMode: mode,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: true
-            };
-
+            if (currentStream) { currentStream.getTracks().forEach(track => track.stop()); }
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: mode, width: 1280 },
+                    audio: true
+                });
                 const bgVideo = document.getElementById('video-bg');
-                const bubbleVideo = document.getElementById('video-bubble');
-
-                // 赋值视频流
+                const bubble = document.getElementById('bubble');
                 bgVideo.srcObject = currentStream;
-                
-                // 视觉纠偏：前置摄像头加镜像处理
+
                 if (mode === "user") {
                     bgVideo.style.transform = "scaleX(-1)";
-                    bubbleVideo.style.opacity = "1";
-                    bubbleVideo.srcObject = currentStream; // 气泡显示同样的流，增加视觉联动
+                    bubble.innerHTML = `<div class="visualizer">
+                        <div class="bar" style="animation-delay:0s"></div>
+                        <div class="bar" style="animation-delay:0.2s"></div>
+                        <div class="bar" style="animation-delay:0.4s"></div>
+                    </div>`;
                 } else {
                     bgVideo.style.transform = "scaleX(1)";
-                    bubbleVideo.style.opacity = "0.3"; // 切到后置时，气泡进入弱提示状态
-                    bubbleVideo.srcObject = null;
+                    bubble.innerHTML = `<video id="video-bubble" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>`;
+                    document.getElementById('video-bubble').srcObject = currentStream;
                 }
-            } catch (err) {
-                console.error("Camera Access Denied:", err);
-                throw err;
-            }
+            } catch (err) { alert("授权失败: " + err); }
         }
 
-        // 4. AI 文案优化模拟
         function optimizeScript() {
             const prompter = document.getElementById('prompter-content');
             prompter.style.color = "#00dbff";
             prompter.innerHTML = "✨ [AI 已重写]<br><br>观众朋友们，我是 [你的名字]。<br><br>今天我们要聊一个打破常规的话题...<br><br>(眼神保持在气泡上方，微笑)";
         }
 
-        // 5. 录制逻辑
         function toggleRecord() {
             document.body.classList.toggle('recording');
             const isRecording = document.body.classList.contains('recording');
             
             if(isRecording) {
                 startTime = Date.now();
-                scrollPos = 0;
-                scrollInterval = setInterval(() => {
-                    scrollPos -= 0.8;
-                    document.getElementById('prompter-content').style.transform = `translateY(${scrollPos}px)`;
-                }, 30);
+                startPrompter();
             } else {
-                clearInterval(scrollInterval);
-                const duration = Math.floor((Date.now() - startTime) / 1000);
-                showExportSuggestion(duration);
+                stopRecord();
             }
         }
 
-        // 🆕 新增功能：录制后导出优化建议
-        function showExportSuggestion(seconds) {
-            const score = Math.min(100, seconds * 5); // 简单算法
-            alert(`� 录制完成！\n时长：${seconds}秒\nAI 表现评分：${score}\n\n建议建议：\n1. 节奏感不错，建议前3秒加入更强的悬念。\n2. 导出文案已复制到剪贴板（模拟）。`);
+        function startPrompter() {
+            scrollPos = 0;
+            scrollInterval = setInterval(() => {
+                scrollPos -= 0.8;
+                document.getElementById('prompter-content').style.transform = `translateY(${scrollPos}px)`;
+            }, 30);
+        }
+
+        function stopRecord() {
+            clearInterval(scrollInterval);
+            const duration = Math.floor((Date.now() - startTime) / 1000);
+            const score = Math.min(100, 70 + Math.random() * 30).toFixed(0);
+            
+            const record = { date: new Date().toLocaleDateString(), duration, score };
+            history.push(record);
+            localStorage.setItem('behold_history', JSON.stringify(history));
+            
+            showGrowthTrack(record);
+        }
+
+        function showGrowthTrack(lastRecord) {
+            const track = document.getElementById('growth-track');
+            track.style.display = 'flex';
+            track.innerHTML = `
+                <div class="achievement-card">
+                    <h2 style="color:var(--ai-green)">✨ 成就达成！</h2>
+                    <p>本次录制时长：${lastRecord.duration} 秒</p>
+                    <p>AI 表现评分：<span style="font-size:32px">${lastRecord.score}</span></p>
+                    <hr style="border:0.5px solid #333; margin:20px 0">
+                    <p style="font-size:14px; color:#aaa">成长轨迹：已记录 ${history.length} 次奇境降临</p>
+                    <button onclick="closeTrack()" style="margin-top:20px; padding:10px 30px; border-radius:20px; border:none; background:var(--ai-green); font-weight:bold;">继续进化</button>
+                </div>
+            `;
+        }
+
+        function closeTrack() {
+            document.getElementById('growth-track').style.display = 'none';
+            resetPrompter();
+        }
+
+        function resetPrompter() {
+            scrollPos = 0;
+            document.getElementById('prompter-content').style.transform = `translateY(0px)`;
         }
 
         function switchCamera() {
