@@ -4,271 +4,189 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Behold - 君临奇境</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        :root { --accent: #ff3b30; --ai-green: #00ff88; }
-        body { margin: 0; background: #000; color: white; font-family: -apple-system; overflow: hidden; height: 100vh; }
+        :root { --accent: #ff3b30; --ai-green: #00ff88; --glass: rgba(255,255,255,0.1); }
+        body { margin: 0; background: #000; color: white; font-family: -apple-system; overflow: hidden; height: 100vh; touch-action: none; }
+
+        /* 背景贴纸层 */
+        #scene-bg {
+            position: absolute; inset: 0; z-index: 0;
+            background-size: cover; background-position: center;
+            opacity: 0.4; pointer-events: none;
+        }
+
+        /* 视频容器 */
+        #video-bg { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
         
-        #video-bg { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; background: #111; }
-        
-        #security-overlay {
-            position: fixed; inset: 0; z-index: 999;
-            background: rgba(0,0,0,0.9);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            text-align: center; padding: 20px;
+        /* 自由拖拽气泡 */
+        #bubble {
+            position: absolute; width: 150px; height: 150px;
+            border-radius: 20px; border: 2px solid var(--ai-green);
+            z-index: 100; overflow: hidden; background: #000;
+            touch-action: none; cursor: move;
         }
+        #video-bubble { width: 100%; height: 100%; object-fit: cover; }
 
-        .prompter-container {
-            position: fixed; top: 120px; width: 80%; left: 10%; height: 200px;
-            z-index: 10; overflow: hidden; pointer-events: none;
-            mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+        /* 提词器：支持手动输入 */
+        .prompter-box {
+            position: fixed; top: 100px; width: 90%; left: 5%; height: 180px;
+            z-index: 50; background: var(--glass); backdrop-filter: blur(10px);
+            border-radius: 15px; padding: 15px; box-sizing: border-box;
         }
-        #prompter-content { font-size: 26px; line-height: 1.5; color: var(--ai-green); transition: transform 0.2s linear; }
-
-        #growth-track {
-            position: fixed; inset: 0; z-index: 200;
-            background: rgba(0,0,0,0.95);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(20px);
+        #script-input {
+            width: 100%; height: 100%; background: transparent; border: none;
+            color: #fff; font-size: 18px; resize: none; outline: none;
         }
-        .achievement-card {
-            background: linear-gradient(145deg, #1e1e1e, #111);
-            padding: 30px; border-radius: 24px; border: 1px solid var(--ai-green);
-            text-align: center; width: 80%;
+        .highlight-text { color: var(--ai-green); font-weight: bold; }
+
+        /* 底部控制面板 */
+        .nav-bar {
+            position: fixed; bottom: 20px; width: 94%; left: 3%;
+            display: flex; justify-content: space-around; align-items: center;
+            background: rgba(0,0,0,0.8); padding: 15px 0; border-radius: 25px; z-index: 200;
         }
+        .btn-icon { background: none; border: none; color: white; font-size: 20px; }
+        .rec-btn { width: 60px; height: 60px; border: 3px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .rec-core { width: 45px; height: 45px; background: var(--accent); border-radius: 50%; transition: 0.3s; }
+        .recording .rec-core { border-radius: 8px; transform: scale(0.6); }
 
-        .bubble-window {
-            position: absolute; width: 130px; height: 130px;
-            border-radius: 50% 50% 50% 5%;
-            border: 2px solid var(--ai-green); z-index: 50; bottom: 130px; right: 20px;
-            overflow: hidden; box-shadow: 0 0 20px rgba(0,255,136,0.2);
-            background: #000;
-        }
-
-        .visualizer {
-            display: flex; align-items: center; justify-content: center; gap: 3px; height: 100%;
-        }
-        .bar { width: 4px; background: var(--ai-green); border-radius: 2px; animation: glow 1s infinite; }
-        @keyframes glow { 0%, 100% { height: 10px; } 50% { height: 40px; } }
-
-        .controls { position: fixed; bottom: 40px; width: 100%; display: flex; justify-content: space-around; align-items: center; z-index: 100; }
-        .record-btn { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; display: flex; justify-content: center; align-items: center; background: none; }
-        .record-btn-inner { width: 65px; height: 65px; background: var(--accent); border-radius: 50%; transition: 0.3s; }
-        .recording .record-btn-inner { width: 30px; height: 30px; border-radius: 8px; }
-        .btn-side { padding: 12px 20px; border-radius: 25px; border: 2px solid rgba(255,255,255,0.6); background: rgba(0,0,0,0.4); color: white; font-size: 14px; backdrop-filter: blur(10px); }
-
-        .system-status-pill {
-            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 59, 48, 0.9);
-            padding: 2px 12px; border-radius: 20px;
-            font-size: 12px; font-weight: bold; z-index: 150;
-            display: none; animation: pulse 1s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        #export-area {
-            margin-top: 15px; text-align: left;
-            background: rgba(255,255,255,0.05);
-            padding: 10px; border-radius: 12px; font-size: 13px; color: #ccc;
+        /* 数据看板 */
+        #data-panel {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 300;
+            display: none; flex-direction: column; padding: 40px 20px;
         }
     </style>
 </head>
 <body>
 
-    <div id="security-overlay">
-        <h2>君临奇境 Behold</h2>
-        <p id="security-desc">正在检测安全环境...</p>
-        <button id="start-node" style="padding: 15px 40px; border-radius: 30px; border: none; background: var(--ai-green); font-weight: bold; display: none;" onclick="initSystem()">开启视窗</button>
-    </div>
-
+    <div id="scene-bg"></div>
     <video id="video-bg" autoplay playsinline muted></video>
 
-    <div id="recording-pill" class="system-status-pill">● REC</div>
-    
-    <div class="prompter-container">
-        <div id="prompter-content">
-            欢迎降临。<br><br>这是你的第一个自媒体里程碑。<br><br>保持自信，眼神聚焦在气泡上方。<br><br>Behold 正在优化你的表达轨迹...
-        </div>
-    </div>
-
-    <div class="bubble-window" id="bubble" onclick="switchCamera()">
+    <div id="bubble" style="top: 400px; left: 200px;">
         <video id="video-bubble" autoplay playsinline muted></video>
     </div>
 
-    <div class="controls">
-        <button class="btn-side" onclick="optimizeScript()">🪄 AI 优化</button>
-        <button class="record-btn" onclick="toggleRecord()">
-            <div class="record-btn-inner"></div>
-        </button>
-        <button class="btn-side" onclick="switchCamera()">🔄 切换</button>
+    <div class="prompter-box">
+        <textarea id="script-input" placeholder="在此输入或粘贴你的文案..."></textarea>
     </div>
 
-    <div id="growth-track"></div>
+    <div class="nav-bar">
+        <button class="btn-icon" onclick="toggleData()">📊 历程</button>
+        <button class="btn-icon" onclick="changeScene()">🖼️ 场景</button>
+        <button class="rec-btn" onclick="handleRecord()">
+            <div class="rec-core" id="rec-core"></div>
+        </button>
+        <button class="btn-icon" onclick="switchCam()">🔄 切换</button>
+        <button class="btn-icon" onclick="toggleLayout()">📱 布局</button>
+    </div>
+
+    <div id="data-panel">
+        <h2>📈 成长轨迹</h2>
+        <div id="history-list" style="overflow-y: auto; flex: 1;"></div>
+        <button onclick="toggleData()" style="padding: 15px; background: var(--ai-green); border: none; border-radius: 10px; margin-top: 20px;">关闭</button>
+    </div>
 
     <script>
-        let currentStream = null;
-        let currentFacingMode = "user";
-        let scrollPos = 0;
-        let scrollInterval;
-        let startTime;
+        let mediaRecorder;
+        let recordedChunks = [];
+        let currentStream;
+        let isRecording = false;
 
-        let history = JSON.parse(localStorage.getItem('behold_history') || '[]');
-        let achievementList = JSON.parse(localStorage.getItem('behold_achievements_list') || '[]');
+        // 1. 拖拽逻辑 (支持桌面和移动端)
+        const bubble = document.getElementById('bubble');
+        let isDragging = false;
+        let startX, startY;
 
-        window.onload = () => {
-            const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
-            const desc = document.getElementById('security-desc');
-            const btn = document.getElementById('start-node');
-
-            if (!isHttps) {
-                desc.innerHTML = "⚠️ 需要 HTTPS 环境<br><small>请确保使用 GitHub Pages 访问</small>";
-                desc.style.color = "#ff3b30";
-            } else {
-                desc.innerText = "✨ 环境已就绪";
-                btn.style.display = "block";
-            }
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js').catch(e => console.log('SW Error'));
-            }
+        bubble.onpointerdown = (e) => {
+            isDragging = true;
+            startX = e.clientX - bubble.offsetLeft;
+            startY = e.clientY - bubble.offsetTop;
+            bubble.setPointerCapture(e.pointerId);
         };
 
-        async function initSystem() {
-            document.getElementById('security-overlay').style.opacity = "0";
-            setTimeout(() => { document.getElementById('security-overlay').style.display = "none"; }, 300);
-            await startCamera(currentFacingMode);
+        bubble.onpointermove = (e) => {
+            if (!isDragging) return;
+            bubble.style.left = (e.clientX - startX) + 'px';
+            bubble.style.top = (e.clientY - startY) + 'px';
+        };
+
+        bubble.onpointerup = () => isDragging = false;
+
+        // 2. 录制逻辑 (保存到本地)
+        async function startSystem() {
+            currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('video-bg').srcObject = currentStream;
+            document.getElementById('video-bubble').srcObject = currentStream;
         }
 
-        async function startCamera(mode) {
-            if (currentStream) { currentStream.getTracks().forEach(track => track.stop()); }
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: mode, width: 1280 },
-                    audio: true
-                });
-                const bgVideo = document.getElementById('video-bg');
-                const bubble = document.getElementById('bubble');
-                bgVideo.srcObject = currentStream;
-
-                if (mode === "user") {
-                    bgVideo.style.transform = "scaleX(-1)";
-                    bubble.innerHTML = `<div class="visualizer">
-                        <div class="bar" style="animation-delay:0s"></div>
-                        <div class="bar" style="animation-delay:0.2s"></div>
-                        <div class="bar" style="animation-delay:0.4s"></div>
-                    </div>`;
-                } else {
-                    bgVideo.style.transform = "scaleX(1)";
-                    bubble.innerHTML = `<video id="video-bubble" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>`;
-                    document.getElementById('video-bubble').srcObject = currentStream;
-                }
-            } catch (err) { alert("授权失败: " + err); }
-        }
-
-        function optimizeScript() {
-            const prompter = document.getElementById('prompter-content');
-            prompter.style.color = "#00dbff";
-            prompter.innerHTML = "✨ [AI 已重写]<br><br>观众朋友们，我是 [你的名字]。<br><br>今天我们要聊一个打破常规的话题...<br><br>(眼神保持在气泡上方，微笑)";
-        }
-
-        function toggleRecord() {
-            document.body.classList.toggle('recording');
-            const isRecording = document.body.classList.contains('recording');
-            document.getElementById('recording-pill').style.display = isRecording ? 'block' : 'none';
-            
-            if(isRecording) {
-                startTime = Date.now();
-                startPrompter();
+        function handleRecord() {
+            if (!isRecording) {
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(currentStream);
+                mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
+                mediaRecorder.onstop = downloadVideo;
+                mediaRecorder.start();
+                document.body.classList.add('recording');
             } else {
-                stopRecord();
+                mediaRecorder.stop();
+                document.body.classList.remove('recording');
+                saveToHistory();
+            }
+            isRecording = !isRecording;
+        }
+
+        function downloadVideo() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Behold_${Date.now()}.webm`;
+            a.click();
+        }
+
+        // 3. 场景切换
+        const scenes = [
+            '', 
+            'https://images.unsplash.com/photo-1492684223066-81342ee5ff30', // 发布会
+            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3', // 教学
+            'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1'  // 旅游
+        ];
+        let sceneIdx = 0;
+        function changeScene() {
+            sceneIdx = (sceneIdx + 1) % scenes.size;
+            document.getElementById('scene-bg').style.backgroundImage = `url(${scenes[sceneIdx]})`;
+        }
+
+        // 4. 历史记录
+        function saveToHistory() {
+            let logs = JSON.parse(localStorage.getItem('behold_logs') || '[]');
+            logs.push({ date: new Date().toLocaleString(), count: logs.length + 1 });
+            localStorage.setItem('behold_logs', JSON.stringify(logs));
+        }
+
+        function toggleData() {
+            const panel = document.getElementById('data-panel');
+            const list = document.getElementById('history-list');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            
+            let logs = JSON.parse(localStorage.getItem('behold_logs') || '[]');
+            list.innerHTML = logs.map(l => `<div style="padding:10px; border-bottom:1px solid #333;">第${l.count}次录制 - ${l.date}</div>`).join('');
+        }
+
+        // 5. 布局切换
+        let layoutIdx = 0;
+        function toggleLayout() {
+            layoutIdx = (layoutIdx + 1) % 3;
+            if (layoutIdx === 1) { // 左右
+                bubble.style.width = "50%"; bubble.style.height = "100%"; bubble.style.top = "0"; bubble.style.left = "0"; bubble.style.borderRadius = "0";
+            } else if (layoutIdx === 2) { // 上下
+                bubble.style.width = "100%"; bubble.style.height = "50%"; bubble.style.top = "0"; bubble.style.left = "0"; bubble.style.borderRadius = "0";
+            } else { // 恢复气泡
+                bubble.style.width = "150px"; bubble.style.height = "150px"; bubble.style.borderRadius = "20px";
             }
         }
 
-        function startPrompter() {
-            scrollPos = 0;
-            scrollInterval = setInterval(() => {
-                scrollPos -= 0.8;
-                document.getElementById('prompter-content').style.transform = `translateY(${scrollPos}px)`;
-            }, 30);
-        }
-
-        function stopRecord() {
-            clearInterval(scrollInterval);
-            document.getElementById('recording-pill').style.display = 'none';
-            
-            const duration = Math.floor((Date.now() - startTime) / 1000);
-            const score = Math.min(100, 75 + Math.random() * 25).toFixed(0);
-            
-            const aiSuggestion = generateAISuggestion(duration);
-            
-            const newEntry = {
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                duration,
-                score,
-                suggestion: aiSuggestion
-            };
-            achievementList.push(newEntry);
-            localStorage.setItem('behold_achievements_list', JSON.stringify(achievementList));
-            
-            showGrowthTrack(newEntry);
-        }
-
-        function generateAISuggestion(duration) {
-            const hooks = [
-                "为什么 99% 的人都会在这一步失败？",
-                "这是我今天发现最离谱的事...",
-                "如果你也想改变，请听我说完这 30 秒。"
-            ];
-            const hook = hooks[Math.floor(Math.random() * hooks.length)];
-            
-            return `【标题建议】: ${hook}\n\n【运营文案】: 记录下这一刻的思考。录制时长 ${duration}s，情绪饱满。建议在第 5 秒加入画面切屏动画。#君临奇境 #Behold #数字孪生`;
-        }
-
-        function showGrowthTrack(entry) {
-            const track = document.getElementById('growth-track');
-            track.style.display = 'flex';
-            track.innerHTML = `
-                <div class="achievement-card">
-                    <h2 style="color:var(--ai-green)">🎬 录制圆满完成</h2>
-                    <p style="font-size:14px">"观众已通过你的视角看见了世界"</p>
-                    <div style="display:flex; justify-content:space-around; margin: 20px 0;">
-                        <div><small>时长</small><br><strong>${entry.duration}s</strong></div>
-                        <div><small>表现分</small><br><strong style="color:var(--ai-green)">${entry.score}</strong></div>
-                    </div>
-                    <div id="export-area">
-                        <p style="color:var(--ai-green); margin-bottom:5px;">💡 AI 优化文案已生成：</p>
-                        <div id="copy-text" style="font-family:monospace;">${entry.suggestion.replace(/\n/g, '<br>')}</div>
-                        <button onclick="copyToClipboard()" style="margin-top:10px; background:none; border:1px solid #555; color:#fff; padding:5px 10px; border-radius:8px; font-size:12px;">复制建议文案</button>
-                    </div>
-                    <button onclick="closeTrack()" style="margin-top:20px; width:100%; padding:15px; border-radius:15px; border:none; background:var(--ai-green); font-weight:bold; color:#000;">保存并返回奇境</button>
-                </div>
-            `;
-        }
-
-        function copyToClipboard() {
-            const text = document.getElementById('copy-text').innerText;
-            navigator.clipboard.writeText(text).then(() => {
-                alert("文案已复制到剪贴板，快去发布吧！");
-            });
-        }
-
-        function closeTrack() {
-            document.getElementById('growth-track').style.display = 'none';
-            resetPrompter();
-        }
-
-        function resetPrompter() {
-            scrollPos = 0;
-            document.getElementById('prompter-content').style.transform = `translateY(0px)`;
-        }
-
-        function switchCamera() {
-            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
-            startCamera(currentFacingMode);
-        }
+        window.onload = startSystem;
     </script>
 </body>
 </html>
