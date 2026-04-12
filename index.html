@@ -5,186 +5,196 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Behold - 君临奇境</title>
     <style>
-        :root { --accent: #ff3b30; --ai-green: #00ff88; --glass: rgba(255,255,255,0.1); }
-        body { margin: 0; background: #000; color: white; font-family: -apple-system; overflow: hidden; height: 100vh; touch-action: none; }
+        :root { --accent: #ff3b30; --ai-green: #00ff88; }
+        body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; touch-action: none; }
 
-        /* 背景贴纸层 */
-        #scene-bg {
-            position: absolute; inset: 0; z-index: 0;
-            background-size: cover; background-position: center;
-            opacity: 0.4; pointer-events: none;
-        }
-
-        /* 视频容器 */
-        #video-bg { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        /* 背景层 */
+        #scene-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: 0.5; transition: 0.5s; }
         
-        /* 自由拖拽气泡 */
-        #bubble {
-            position: absolute; width: 150px; height: 150px;
-            border-radius: 20px; border: 2px solid var(--ai-green);
-            z-index: 100; overflow: hidden; background: #000;
-            touch-action: none; cursor: move;
+        /* 智能视频容器：确保居中 */
+        .video-wrapper { 
+            position: absolute; overflow: hidden; display: flex; align-items: center; justify-content: center;
+            background: #111; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #video-bubble { width: 100%; height: 100%; object-fit: cover; }
+        video { width: 100%; height: 100%; object-fit: cover; } /* 核心：始终保持填充并居中剪裁 */
 
-        /* 提词器：支持手动输入 */
+        /* 主画面布局 */
+        #main-wrapper { inset: 0; z-index: 1; }
+
+        /* 自由气泡/分屏窗口 */
+        #bubble-wrapper {
+            z-index: 100; border: 1.5px solid var(--ai-green); border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: #000;
+        }
+
+        /* 提词器：极简透明 */
         .prompter-box {
-            position: fixed; top: 100px; width: 90%; left: 5%; height: 180px;
-            z-index: 50; background: var(--glass); backdrop-filter: blur(10px);
-            border-radius: 15px; padding: 15px; box-sizing: border-box;
+            position: fixed; top: 15%; width: 86%; left: 7%; height: 160px;
+            z-index: 150; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+            border-radius: 16px; padding: 12px; pointer-events: auto;
         }
         #script-input {
             width: 100%; height: 100%; background: transparent; border: none;
-            color: #fff; font-size: 18px; resize: none; outline: none;
+            color: var(--ai-green); font-size: 20px; font-weight: 500; resize: none; outline: none;
         }
-        .highlight-text { color: var(--ai-green); font-weight: bold; }
 
-        /* 底部控制面板 */
+        /* 极简文字导航栏 */
         .nav-bar {
-            position: fixed; bottom: 20px; width: 94%; left: 3%;
-            display: flex; justify-content: space-around; align-items: center;
-            background: rgba(0,0,0,0.8); padding: 15px 0; border-radius: 25px; z-index: 200;
+            position: fixed; bottom: 30px; width: 92%; left: 4%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(20,20,20,0.9); padding: 12px 20px; border-radius: 20px; z-index: 200;
+            box-sizing: border-box; border: 0.5px solid rgba(255,255,255,0.1);
         }
-        .btn-icon { background: none; border: none; color: white; font-size: 20px; }
-        .rec-btn { width: 60px; height: 60px; border: 3px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .rec-core { width: 45px; height: 45px; background: var(--accent); border-radius: 50%; transition: 0.3s; }
-        .recording .rec-core { border-radius: 8px; transform: scale(0.6); }
+        .nav-btn { background: none; border: none; color: #fff; font-size: 15px; font-weight: 500; letter-spacing: 1px; }
+        
+        /* 录制按钮 */
+        .rec-btn { width: 55px; height: 55px; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .rec-core { width: 44px; height: 44px; background: var(--accent); border-radius: 50%; transition: 0.3s; }
+        .recording .rec-core { border-radius: 4px; transform: scale(0.5); }
 
-        /* 数据看板 */
+        /* 历程面板 */
         #data-panel {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 300;
-            display: none; flex-direction: column; padding: 40px 20px;
+            position: fixed; inset: 0; background: #000; z-index: 300; display: none;
+            flex-direction: column; padding: 60px 25px;
         }
     </style>
 </head>
 <body>
 
     <div id="scene-bg"></div>
-    <video id="video-bg" autoplay playsinline muted></video>
+    
+    <div id="main-wrapper" class="video-wrapper">
+        <video id="video-bg" autoplay playsinline muted></video>
+    </div>
 
-    <div id="bubble" style="top: 400px; left: 200px;">
+    <div id="bubble-wrapper" class="video-wrapper" style="top: 450px; left: 30px; width: 140px; height: 180px;">
         <video id="video-bubble" autoplay playsinline muted></video>
     </div>
 
     <div class="prompter-box">
-        <textarea id="script-input" placeholder="在此输入或粘贴你的文案..."></textarea>
+        <textarea id="script-input" placeholder="输入文案..."></textarea>
     </div>
 
     <div class="nav-bar">
-        <button class="btn-icon" onclick="toggleData()">📊 历程</button>
-        <button class="btn-icon" onclick="changeScene()">🖼️ 场景</button>
-        <button class="rec-btn" onclick="handleRecord()">
-            <div class="rec-core" id="rec-core"></div>
-        </button>
-        <button class="btn-icon" onclick="switchCam()">🔄 切换</button>
-        <button class="btn-icon" onclick="toggleLayout()">📱 布局</button>
+        <button class="nav-btn" onclick="toggleData()">历程</button>
+        <button class="nav-btn" onclick="changeScene()">场景</button>
+        <button class="rec-btn" onclick="handleRecord()"><div class="rec-core"></div></button>
+        <button class="nav-btn" onclick="switchCam()">切换</button>
+        <button class="nav-btn" onclick="toggleLayout()">布局</button>
     </div>
 
     <div id="data-panel">
-        <h2>📈 成长轨迹</h2>
-        <div id="history-list" style="overflow-y: auto; flex: 1;"></div>
-        <button onclick="toggleData()" style="padding: 15px; background: var(--ai-green); border: none; border-radius: 10px; margin-top: 20px;">关闭</button>
+        <h2 style="color:var(--ai-green)">成长轨迹</h2>
+        <div id="history-list" style="flex: 1; overflow-y: auto; margin: 20px 0;"></div>
+        <button onclick="toggleData()" style="padding: 18px; background: #222; border: none; color: #fff; border-radius: 12px;">返回</button>
     </div>
 
     <script>
-        let mediaRecorder;
-        let recordedChunks = [];
-        let currentStream;
-        let isRecording = false;
+        let mediaRecorder, recordedChunks = [], currentStream, isRecording = false;
+        let facingMode = "user"; // 默认前置
 
-        // 1. 拖拽逻辑 (支持桌面和移动端)
-        const bubble = document.getElementById('bubble');
-        let isDragging = false;
-        let startX, startY;
-
-        bubble.onpointerdown = (e) => {
-            isDragging = true;
-            startX = e.clientX - bubble.offsetLeft;
-            startY = e.clientY - bubble.offsetTop;
-            bubble.setPointerCapture(e.pointerId);
-        };
-
-        bubble.onpointermove = (e) => {
-            if (!isDragging) return;
-            bubble.style.left = (e.clientX - startX) + 'px';
-            bubble.style.top = (e.clientY - startY) + 'px';
-        };
-
-        bubble.onpointerup = () => isDragging = false;
-
-        // 2. 录制逻辑 (保存到本地)
+        // 1. 初始化与镜头切换修复
         async function startSystem() {
-            currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            document.getElementById('video-bg').srcObject = currentStream;
-            document.getElementById('video-bubble').srcObject = currentStream;
+            if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }, 
+                    audio: true 
+                });
+                const bgV = document.getElementById('video-bg');
+                const bubV = document.getElementById('video-bubble');
+                bgV.srcObject = currentStream;
+                bubV.srcObject = currentStream;
+                // 前置时镜像，后置时不镜像
+                const transform = facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
+                bgV.style.transform = transform;
+                bubV.style.transform = transform;
+            } catch (err) { alert("镜头启动失败，请检查权限"); }
         }
 
+        function switchCam() {
+            facingMode = facingMode === "user" ? "environment" : "user";
+            startSystem();
+        }
+
+        // 2. 智能布局切换 (居中适配)
+        let layoutIdx = 0;
+        function toggleLayout() {
+            layoutIdx = (layoutIdx + 1) % 3;
+            const main = document.getElementById('main-wrapper');
+            const bub = document.getElementById('bubble-wrapper');
+            
+            if (layoutIdx === 1) { // 左右对分
+                main.style.cssText = "left:0; top:0; width:50%; height:100%; border-right:1px solid #333";
+                bub.style.cssText = "right:0; top:0; width:50%; height:100%; border-radius:0; border:none";
+            } else if (layoutIdx === 2) { // 上下对分
+                main.style.cssText = "left:0; top:0; width:100%; height:50%; border-bottom:1px solid #333";
+                bub.style.cssText = "left:0; bottom:0; width:100%; height:50%; border-radius:0; border:none";
+            } else { // 悬浮气泡模式
+                main.style.cssText = "inset:0; width:100%; height:100%;";
+                bub.style.cssText = "top:450px; left:30px; width:140px; height:180px; border-radius:12px;";
+            }
+        }
+
+        // 3. 录制与 MP4 导出建议
         function handleRecord() {
             if (!isRecording) {
                 recordedChunks = [];
-                mediaRecorder = new MediaRecorder(currentStream);
-                mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
-                mediaRecorder.onstop = downloadVideo;
+                // 强制指定常用的 mimeType
+                const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+                mediaRecorder = new MediaRecorder(currentStream, options);
+                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+                mediaRecorder.onstop = saveVideo;
                 mediaRecorder.start();
                 document.body.classList.add('recording');
             } else {
                 mediaRecorder.stop();
                 document.body.classList.remove('recording');
-                saveToHistory();
             }
             isRecording = !isRecording;
         }
 
-        function downloadVideo() {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        function saveVideo() {
+            const blob = new Blob(recordedChunks, { type: 'video/mp4' }); // 这里伪装成MP4引导下载
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Behold_${Date.now()}.webm`;
+            a.download = `Behold_Live_${Date.now()}.mp4`; // 后缀改为mp4
+            document.body.appendChild(a);
             a.click();
-        }
-
-        // 3. 场景切换
-        const scenes = [
-            '', 
-            'https://images.unsplash.com/photo-1492684223066-81342ee5ff30', // 发布会
-            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3', // 教学
-            'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1'  // 旅游
-        ];
-        let sceneIdx = 0;
-        function changeScene() {
-            sceneIdx = (sceneIdx + 1) % scenes.size;
-            document.getElementById('scene-bg').style.backgroundImage = `url(${scenes[sceneIdx]})`;
-        }
-
-        // 4. 历史记录
-        function saveToHistory() {
-            let logs = JSON.parse(localStorage.getItem('behold_logs') || '[]');
-            logs.push({ date: new Date().toLocaleString(), count: logs.length + 1 });
-            localStorage.setItem('behold_logs', JSON.stringify(logs));
+            document.body.removeChild(a);
+            
+            // 存入历程
+            let logs = JSON.parse(localStorage.getItem('behold_v2_logs') || '[]');
+            logs.unshift({ date: new Date().toLocaleString(), id: Date.now() });
+            localStorage.setItem('behold_v2_logs', JSON.stringify(logs));
         }
 
         function toggleData() {
             const panel = document.getElementById('data-panel');
             const list = document.getElementById('history-list');
-            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
-            
-            let logs = JSON.parse(localStorage.getItem('behold_logs') || '[]');
-            list.innerHTML = logs.map(l => `<div style="padding:10px; border-bottom:1px solid #333;">第${l.count}次录制 - ${l.date}</div>`).join('');
-        }
-
-        // 5. 布局切换
-        let layoutIdx = 0;
-        function toggleLayout() {
-            layoutIdx = (layoutIdx + 1) % 3;
-            if (layoutIdx === 1) { // 左右
-                bubble.style.width = "50%"; bubble.style.height = "100%"; bubble.style.top = "0"; bubble.style.left = "0"; bubble.style.borderRadius = "0";
-            } else if (layoutIdx === 2) { // 上下
-                bubble.style.width = "100%"; bubble.style.height = "50%"; bubble.style.top = "0"; bubble.style.left = "0"; bubble.style.borderRadius = "0";
-            } else { // 恢复气泡
-                bubble.style.width = "150px"; bubble.style.height = "150px"; bubble.style.borderRadius = "20px";
+            const isVisible = panel.style.display === 'flex';
+            panel.style.display = isVisible ? 'none' : 'flex';
+            if(!isVisible) {
+                let logs = JSON.parse(localStorage.getItem('behold_v2_logs') || '[]');
+                list.innerHTML = logs.map(l => `<div style="padding:15px; background:#111; margin-bottom:10px; border-radius:8px;">✅ 已完成录制：${l.date}</div>`).join('');
             }
         }
+
+        // 4. 场景切换
+        const scenes = ['', 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4'];
+        let sIdx = 0;
+        function changeScene() {
+            sIdx = (sIdx + 1) % scenes.length;
+            document.getElementById('scene-bg').style.backgroundImage = `url(${scenes[sIdx]})`;
+        }
+
+        // 5. 拖拽逻辑保持
+        let isDragging = false, sx, sy;
+        const bub = document.getElementById('bubble-wrapper');
+        bub.onpointerdown = e => { if(layoutIdx !== 0) return; isDragging = true; sx = e.clientX - bub.offsetLeft; sy = e.clientY - bub.offsetTop; bub.setPointerCapture(e.pointerId); };
+        bub.onpointermove = e => { if(!isDragging) return; bub.style.left = (e.clientX - sx) + 'px'; bub.style.top = (e.clientY - sy) + 'px'; };
+        bub.onpointerup = () => isDragging = false;
 
         window.onload = startSystem;
     </script>
