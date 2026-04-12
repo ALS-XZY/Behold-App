@@ -74,107 +74,123 @@
     <script>
         // 状态管理
         let currentStream = null;
-        let currentFacingMode = "environment";
+        let currentFacingMode = "user"; // 默认先开前置，口播更常用
         let scrollPos = 0;
         let scrollInterval;
         let startTime;
-        let achievementCount = localStorage.getItem('behold_achievements') || 0;
 
-        // 1. 初始化系统
-        async function initSystem() {
-            document.getElementById('security-overlay').style.display = "none";
-            await startCamera(currentFacingMode);
-            updateAchievementUI();
-        }
-
-        // 2. 摄像头逻辑 (带镜像修复)
-        async function startCamera(mode) {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: mode },
-                    audio: true
-                });
-                const bgVideo = document.getElementById('video-bg');
-                bgVideo.srcObject = currentStream;
-                
-                // 视觉反馈：如果是前置，给背景加一个镜像，符合自拍习惯
-                bgVideo.style.transform = (mode === "user") ? "scaleX(-1)" : "scaleX(1)";
-                
-                // 气泡逻辑：当切到后置时，气泡显示前置的"最后一张快照"或 loading 动画
-                const bubbleVideo = document.getElementById('video-bubble');
-                bubbleVideo.style.opacity = (mode === "user") ? "1" : "0.3";
-            } catch (err) {
-                console.error("Camera Error:", err);
-            }
-        }
-
-        // 3. AI 文案优化模拟 (未来接入 Gemini API)
-        function optimizeScript() {
-            const prompter = document.getElementById('prompter-content');
-            const originalText = prompter.innerText;
-            prompter.innerHTML = "✨ [AI 正在重构文案...]<br><br>"" + originalText.substring(0, 30) + "...""<br><br>🚀 优化建议：加入更多情感钩子，开头第一句话改为'你是否也曾感觉到...'";
-            prompter.style.color = "#00dbff";
-        }
-
-        // 4. 录制与成就系统
-        function toggleRecord() {
-            document.body.classList.toggle('recording');
-            const isRecording = document.body.classList.contains('recording');
-            
-            if(isRecording) {
-                startTime = Date.now();
-                startPrompter();
-            } else {
-                clearInterval(scrollInterval);
-                saveAchievement();
-            }
-        }
-
-        function startPrompter() {
-            scrollPos = 0;
-            scrollInterval = setInterval(() => {
-                scrollPos -= 0.8;
-                document.getElementById('prompter-content').style.transform = `translateY(${scrollPos}px)`;
-            }, 30);
-        }
-
-        function saveAchievement() {
-            const duration = Math.floor((Date.now() - startTime) / 1000);
-            if (duration > 3) { // 录制超过3秒才算成就
-                achievementCount++;
-                localStorage.setItem('behold_achievements', achievementCount);
-                updateAchievementUI();
-                alert(`🎉 达成成就！这是你第 ${achievementCount} 次君临奇境。`);
-            }
-        }
-
-        function updateAchievementUI() {
-            // 可以在界面某个角落显示成就勋章
-            console.log("当前成长值:", achievementCount);
-        }
-
-        function switchCamera() {
-            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
-            startCamera(currentFacingMode);
-        }
-
-        // 安全环境自检
+        // 1. 页面加载自检：只检测环境，不请求权限
         window.onload = () => {
             const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
             const desc = document.getElementById('security-desc');
             const btn = document.getElementById('start-node');
 
             if (!isHttps) {
-                desc.innerText = "❌ 警告：必须在 HTTPS 安全环境下运行以开启摄像头。";
+                desc.innerHTML = "⚠️ 需要 HTTPS 环境<br><small>请确保使用 GitHub Pages 访问</small>";
                 desc.style.color = "#ff3b30";
             } else {
-                desc.innerText = "✅ 环境安全。点击下方按钮授权摄像头并进入奇境。";
-                btn.style.display = "block";
+                desc.innerText = "✨ 环境已就绪";
+                btn.style.display = "block"; // 只在环境安全时显示进入按钮
+            }
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(e => console.log('SW Error'));
             }
         };
+
+        // 2. 初始化系统：必须由用户点击触发 (Critical Fix)
+        async function initSystem() {
+            try {
+                // 先隐藏遮罩层，让用户感知到进入了应用
+                document.getElementById('security-overlay').style.opacity = "0";
+                setTimeout(() => {
+                    document.getElementById('security-overlay').style.display = "none";
+                }, 300);
+
+                // 核心：请求权限
+                await startCamera(currentFacingMode);
+                console.log("系统启动成功");
+            } catch (err) {
+                alert("授权失败，请刷新并允许摄像头访问: " + err);
+            }
+        }
+
+        // 3. 摄像头调度引擎
+        async function startCamera(mode) {
+            // 如果已有流，先关掉释放硬件，防止 iOS 冲突
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = {
+                video: {
+                    facingMode: mode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: true
+            };
+
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const bgVideo = document.getElementById('video-bg');
+                const bubbleVideo = document.getElementById('video-bubble');
+
+                // 赋值视频流
+                bgVideo.srcObject = currentStream;
+                
+                // 视觉纠偏：前置摄像头加镜像处理
+                if (mode === "user") {
+                    bgVideo.style.transform = "scaleX(-1)";
+                    bubbleVideo.style.opacity = "1";
+                    bubbleVideo.srcObject = currentStream; // 气泡显示同样的流，增加视觉联动
+                } else {
+                    bgVideo.style.transform = "scaleX(1)";
+                    bubbleVideo.style.opacity = "0.3"; // 切到后置时，气泡进入弱提示状态
+                    bubbleVideo.srcObject = null;
+                }
+            } catch (err) {
+                console.error("Camera Access Denied:", err);
+                throw err;
+            }
+        }
+
+        // 4. AI 文案优化模拟
+        function optimizeScript() {
+            const prompter = document.getElementById('prompter-content');
+            prompter.style.color = "#00dbff";
+            prompter.innerHTML = "✨ [AI 已重写]<br><br>观众朋友们，我是 [你的名字]。<br><br>今天我们要聊一个打破常规的话题...<br><br>(眼神保持在气泡上方，微笑)";
+        }
+
+        // 5. 录制逻辑
+        function toggleRecord() {
+            document.body.classList.toggle('recording');
+            const isRecording = document.body.classList.contains('recording');
+            
+            if(isRecording) {
+                startTime = Date.now();
+                scrollPos = 0;
+                scrollInterval = setInterval(() => {
+                    scrollPos -= 0.8;
+                    document.getElementById('prompter-content').style.transform = `translateY(${scrollPos}px)`;
+                }, 30);
+            } else {
+                clearInterval(scrollInterval);
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                showExportSuggestion(duration);
+            }
+        }
+
+        // 🆕 新增功能：录制后导出优化建议
+        function showExportSuggestion(seconds) {
+            const score = Math.min(100, seconds * 5); // 简单算法
+            alert(`� 录制完成！\n时长：${seconds}秒\nAI 表现评分：${score}\n\n建议建议：\n1. 节奏感不错，建议前3秒加入更强的悬念。\n2. 导出文案已复制到剪贴板（模拟）。`);
+        }
+
+        function switchCamera() {
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCamera(currentFacingMode);
+        }
     </script>
 </body>
 </html>
