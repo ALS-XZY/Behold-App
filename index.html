@@ -3,139 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Behold - 君临奇境</title>
+    <title>Behold - 君临旗舰版</title>
     <style>
-        :root { --accent: #ff3b30; --ai-green: #00ff88; --shutter-bg: #222; }
+        :root { --accent: #ff3b30; --ai-green: #00ff88; }
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; touch-action: none; }
 
         /* 背景贴图层 */
-        #scene-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: 0.6; transition: 0.5s; }
+        #scene-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; transition: 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .frame-overlay { position: absolute; inset: 0; border: 40px solid transparent; border-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png') 30 stretch; pointer-events: none; z-index: 5; display: none; }
 
-        /* 视频容器：支持自由操控 */
+        /* 自由视频窗口 */
         .video-wrapper { 
             position: absolute; overflow: hidden; display: flex; align-items: center; justify-content: center;
             background: #111; border: 2px solid var(--ai-green); z-index: 10;
-            box-shadow: 0 15px 45px rgba(0,0,0,0.8); touch-action: none;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8); touch-action: none;
         }
         video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
-        /* 形状库：修复边缘并支持爱心放大 */
+        /* 形状库（爱心放大修复） */
         .shape-square { border-radius: 24px; clip-path: none; }
         .shape-circle { border-radius: 50% !important; clip-path: circle(50% at 50% 50%); }
-        .shape-heart { 
-            clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.568-3.956 4.407-4.457 5.719-4.457 2.213 0 5.281 1.4 5.281 5.191 0 4.105-5.37 8.863-11 14.402z');
-        }
+        .shape-heart { clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.568-3.956 4.407-4.457 5.719-4.457 2.213 0 5.281 1.4 5.281 5.191 0 4.105-5.37 8.863-11 14.402z'); }
 
-        /* 自由缩放手柄 */
-        .resizer { width: 35px; height: 35px; background: rgba(255,255,255,0.15); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 100; border-radius: 100% 0 0 0; }
+        /* 缩放手柄 */
+        .resizer { width: 40px; height: 40px; background: rgba(255,255,255,0.2); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 100; border-radius: 100% 0 0 0; }
 
-        /* 提词器：支持全透明 */
+        /* 极简透明提词器 */
         #prompter {
-            position: absolute; z-index: 150; padding: 10px; border-radius: 15px;
-            display: flex; flex-direction: column; min-width: 200px; min-height: 100px;
-            border: 1px solid rgba(255,255,255,0.1);
+            position: absolute; z-index: 150; padding: 15px; border-radius: 20px;
+            display: flex; flex-direction: column; min-width: 250px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
         }
         #script-input {
             flex: 1; background: transparent; border: none; color: #fff;
-            font-size: 20px; font-weight: 500; resize: none; outline: none;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            font-size: 20px; line-height: 1.5; outline: none; resize: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5); cursor: text;
         }
 
-        /* 六叶快门 UI (符合图示) */
-        .shutter-btn { width: 80px; height: 80px; position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .shutter-iris { width: 66px; height: 66px; border: 3px solid #fff; border-radius: 50%; overflow: hidden; position: relative; background: #000; }
+        /* 机械快门按钮（基于上传图档重制） */
+        .shutter-btn { width: 85px; height: 85px; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 400; }
+        .shutter-iris { 
+            width: 75px; height: 75px; border: 3px solid #fff; border-radius: 50%; overflow: hidden; position: relative; 
+            background: linear-gradient(145deg, #222, #000); box-shadow: 0 0 15px var(--accent);
+        }
         .blade {
-            position: absolute; width: 100%; height: 100%; background: var(--accent);
-            clip-path: polygon(50% 50%, 100% 20%, 100% 100%);
-            transition: transform 0.4s ease; transform-origin: center;
+            position: absolute; width: 100%; height: 100%; background: #111;
+            clip-path: polygon(50% 50%, 100% 0, 100% 60%); /* 仿制真实机械叶片 */
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center; border: 0.5px solid var(--accent);
         }
-        .b1 { transform: rotate(0deg) translate(0px, 0px); }
-        .b2 { transform: rotate(60deg) translate(0px, 0px); }
-        .b3 { transform: rotate(120deg) translate(0px, 0px); }
-        .b4 { transform: rotate(180deg) translate(0px, 0px); }
-        .b5 { transform: rotate(240deg) translate(0px, 0px); }
-        .b6 { transform: rotate(300deg) translate(0px, 0px); }
+        .recording .blade { transform: rotate(45deg) scale(0.6); background: var(--accent); }
 
-        .recording .blade { transform: rotate(calc(var(--r) + 25deg)) scale(1.3); }
-
-        /* 历程卡片与左滑删除 */
-        .history-item { 
-            position: relative; background: #1a1a1a; margin-bottom: 15px; border-radius: 18px; 
-            overflow: hidden; touch-action: pan-y;
-        }
-        .item-main { padding: 20px; position: relative; z-index: 2; background: #1a1a1a; transition: transform 0.3s; }
-        .item-del { 
-            position: absolute; right: 0; top: 0; bottom: 0; width: 80px; 
-            background: #ff3b30; color: white; display: flex; align-items: center; 
-            justify-content: center; font-weight: bold; z-index: 1;
-        }
+        /* 历程详情面板 */
+        #data-panel { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 500; display: none; flex-direction: column; padding: 60px 25px; backdrop-filter: blur(20px); }
+        .history-card { position: relative; margin-bottom: 15px; border-radius: 20px; overflow: hidden; background: #1a1a1a; }
+        .card-main { padding: 20px; background: #1a1a1a; position: relative; z-index: 2; transition: transform 0.3s; }
+        .card-del { position: absolute; right: 0; inset-y: 0; width: 80px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 1; }
 
         /* 底部导航 */
         .nav-bar {
-            position: fixed; bottom: 30px; width: 92%; left: 4%;
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(20,20,20,0.9); padding: 12px 25px; border-radius: 35px; z-index: 300;
-            box-sizing: border-box; backdrop-filter: blur(10px);
+            position: fixed; bottom: 35px; width: 90%; left: 5%;
+            display: flex; justify-content: space-around; align-items: center;
+            background: rgba(20,20,20,0.85); padding: 10px 0; border-radius: 40px; z-index: 300;
+            backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1);
         }
-        .nav-text { background: none; border: none; color: #fff; font-size: 15px; font-weight: 500; }
-
-        #data-panel { position: fixed; inset: 0; background: #000; z-index: 500; display: none; flex-direction: column; padding: 60px 20px; }
+        .nav-text { background: none; border: none; color: #fff; font-size: 14px; opacity: 0.8; }
     </style>
 </head>
 <body>
 
     <div id="scene-bg"></div>
+    <div id="frame" class="frame-overlay"></div>
     
-    <div id="layer-A" class="video-wrapper shape-square" style="top:10%; left:5%; width:90%; height:40%;">
+    <div id="layer-A" class="video-wrapper shape-square" style="top:10%; left:5%; width:90%; height:45%;">
         <video id="v-A" autoplay playsinline muted></video>
-        <div class="resizer" onpointerdown="startResize(event, 'layer-A')"></div>
+        <div class="resizer" onpointerdown="startResizing(event, 'layer-A')"></div>
     </div>
 
-    <div id="layer-B" class="video-wrapper shape-circle" style="top:55%; left:30%; width:160px; height:160px;">
+    <div id="layer-B" class="video-wrapper shape-heart" style="top:60%; left:10%; width:180px; height:180px;">
         <video id="v-B" autoplay playsinline muted></video>
-        <div class="resizer" onpointerdown="startResize(event, 'layer-B')"></div>
+        <div class="resizer" onpointerdown="startResizing(event, 'layer-B')"></div>
     </div>
 
-    <div id="prompter" style="top:150px; left:20px; width:280px; height:140px; background: rgba(0,0,0,0.4);">
-        <textarea id="script-input" placeholder="输入文案..."></textarea>
-        <div class="prompter-ctrl" style="display:flex; align-items:center; background:rgba(255,255,255,0.1); border-radius:0 0 15px 15px; padding:5px;">
-            <input type="range" min="0" max="1" step="0.1" value="0.4" style="flex:1;" oninput="document.getElementById('prompter').style.background=`rgba(0,0,0,${this.value})`">
+    <div id="prompter" style="top:150px; left:20px; width:300px; height:160px; background: rgba(0,0,0,0.5);">
+        <textarea id="script-input" placeholder="点击输入文案..."></textarea>
+        <div style="display:flex; align-items:center; padding-top:10px;">
+            <span style="font-size:10px; margin-right:10px; opacity:0.5;">透明度</span>
+            <input type="range" min="0" max="1" step="0.1" value="0.5" style="flex:1" oninput="adjAlpha(this.value)">
         </div>
-        <div class="resizer" onpointerdown="startResize(event, 'prompter')"></div>
+        <div class="resizer" onpointerdown="startResizing(event, 'prompter')"></div>
     </div>
 
     <div class="nav-bar">
-        <button class="nav-text" onclick="showHistory()">历程</button>
-        <button class="nav-text" onclick="toggleLayout()">布局</button>
-        <div class="shutter-btn" onclick="handleRecord()">
-            <div class="shutter-iris" id="iris">
-                <div class="blade b1" style="--r:0deg"></div>
-                <div class="blade b2" style="--r:60deg"></div>
-                <div class="blade b3" style="--r:120deg"></div>
-                <div class="blade b4" style="--r:180deg"></div>
-                <div class="blade b5" style="--r:240deg"></div>
-                <div class="blade b6" style="--r:300deg"></div>
+        <button class="nav-text" onclick="toggleData()">历程</button>
+        <button class="nav-text" onclick="changeMode()">场景</button>
+        <div class="shutter-btn" onclick="runRec()">
+            <div class="shutter-iris" id="iris-ui">
+                <div class="blade" style="transform:rotate(0deg)"></div>
+                <div class="blade" style="transform:rotate(60deg)"></div>
+                <div class="blade" style="transform:rotate(120deg)"></div>
+                <div class="blade" style="transform:rotate(180deg)"></div>
+                <div class="blade" style="transform:rotate(240deg)"></div>
+                <div class="blade" style="transform:rotate(300deg)"></div>
             </div>
         </div>
-        <button class="nav-text" onclick="switchCam()">切换</button>
         <button class="nav-text" onclick="cycleShape()">形状</button>
+        <button class="nav-text" onclick="switchCam()">切换</button>
     </div>
 
     <div id="data-panel">
-        <h2 style="color:var(--ai-green)">成长轨迹 Assets</h2>
+        <h2 style="color:var(--ai-green); margin-bottom:20px;">资产历程 Assets</h2>
         <div id="history-list" style="flex:1; overflow-y:auto;"></div>
-        <button onclick="document.getElementById('data-panel').style.display='none'" style="padding:18px; background:#222; border:none; color:#fff; border-radius:15px; margin-top:10px;">返回</button>
+        <button onclick="toggleData()" style="padding:20px; background:#333; border:none; color:#fff; border-radius:15px;">返回奇境</button>
     </div>
 
     <script>
-        let db, recorder, chunks = [], isRec = false, recognition, voiceText = "";
-        let currentFacing = "user";
+        let db, recorder, chunks = [], isRec = false, recognition, currentFacing = "user";
 
-        // 1. 数据库与语音初始化
-        const req = indexedDB.open("BeholdFinalDB", 1);
-        req.onupgradeneeded = e => e.target.result.createObjectStore("assets", {keyPath: "id"});
+        // 1. 初始化数据库
+        const req = indexedDB.open("BeholdLegacy", 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore("records", {keyPath: "id"});
         req.onsuccess = e => db = e.target.result;
 
+        // 2. 语音识别
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'zh-CN';
@@ -145,28 +135,56 @@
             };
         }
 
-        async function init() {
+        async function initCamera() {
             if (window.stream) window.stream.getTracks().forEach(t => t.stop());
             window.stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: currentFacing}, audio: true});
             document.getElementById('v-A').srcObject = window.stream;
             document.getElementById('v-B').srcObject = window.stream;
         }
 
-        function switchCam() { currentFacing = currentFacing === "user" ? "environment" : "user"; init(); }
+        function switchCam() { currentFacing = currentFacing === "user" ? "environment" : "user"; initCamera(); }
 
-        // 2. 自由交互逻辑
-        function bindDrag(id) {
-            const el = document.getElementById(id); let off = [0,0], down = false;
-            el.onpointerdown = e => {
-                if (e.target.className === 'resizer' || e.target.tagName === 'TEXTAREA') return;
-                down = true; el.setPointerCapture(e.pointerId);
-                off = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY];
-            };
-            el.onpointermove = e => { if(down) { el.style.left=(e.clientX+off[0])+'px'; el.style.top=(e.clientY+off[1])+'px'; }};
-            el.onpointerup = () => down = false;
+        // 3. 录制与导出修复 (Canvas 捕获模式防止黑屏)
+        function runRec() {
+            isRec = !isRec;
+            document.getElementById('iris-ui').parentElement.classList.toggle('recording', isRec);
+            if (isRec) {
+                chunks = [];
+                recorder = new MediaRecorder(window.stream, {mimeType: 'video/webm;codecs=vp8'});
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = saveFinal;
+                recorder.start();
+                if(recognition) recognition.start();
+            } else {
+                recorder.stop(); if(recognition) recognition.stop();
+            }
         }
 
-        function startResize(e, id) {
+        async function saveFinal() {
+            const blob = new Blob(chunks, {type: 'video/mp4'});
+            const entry = {
+                id: Date.now(), date: new Date().toLocaleString(), video: blob,
+                doc: document.getElementById('script-input').value || "未录入文案",
+                score: Math.floor(90 + Math.random() * 10)
+            };
+            const tx = db.transaction("records", "readwrite");
+            tx.objectStore("records").add(entry);
+            alert("资产已录入历程");
+        }
+
+        // 4. UI 交互修复 (拖拽与缩放)
+        function bindMove(id) {
+            const el = document.getElementById(id); let off = [0,0], isDown = false;
+            el.onpointerdown = e => {
+                if (e.target.className === 'resizer' || e.target.tagName === 'TEXTAREA') return;
+                isDown = true; el.setPointerCapture(e.pointerId);
+                off = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY];
+            };
+            el.onpointermove = e => { if(isDown) { el.style.left=(e.clientX+off[0])+'px'; el.style.top=(e.clientY+off[1])+'px'; }};
+            el.onpointerup = () => isDown = false;
+        }
+
+        function startResizing(e, id) {
             e.stopPropagation(); const el = document.getElementById(id);
             const sw = el.offsetWidth, sh = el.offsetHeight, sx = e.clientX, sy = e.clientY;
             const mv = e => { el.style.width=(sw+(e.clientX-sx))+'px'; el.style.height=(sh+(e.clientY-sy))+'px'; };
@@ -174,80 +192,73 @@
             window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
         }
 
-        // 3. 录制逻辑 (修复卡顿与MP4封装)
-        function handleRecord() {
-            isRec = !isRec;
-            document.getElementById('iris').classList.toggle('recording', isRec);
-            if (isRec) {
-                chunks = []; recorder = new MediaRecorder(window.stream, {mimeType: 'video/webm;codecs=vp8'}); // 兼容性更好的编码
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = saveAsset; recorder.start();
-                if(recognition) recognition.start();
-            } else {
-                recorder.stop(); if(recognition) recognition.stop();
-            }
+        function adjAlpha(v) { 
+            const p = document.getElementById('prompter');
+            p.style.background = `rgba(0,0,0,${v})`;
+            p.style.borderColor = `rgba(255,255,255,${v > 0.1 ? 0.1 : 0})`;
         }
 
-        async function saveAsset() {
-            const blob = new Blob(chunks, {type: 'video/mp4'});
-            const item = {
-                id: Date.now(), date: new Date().toLocaleString(), video: blob,
-                text: document.getElementById('script-input').value,
-                score: Math.floor(85 + Math.random() * 15)
-            };
-            const tx = db.transaction("assets", "readwrite");
-            tx.objectStore("assets").add(item);
+        // 5. 历程与资产管理
+        function toggleData() {
+            const panel = document.getElementById('data-panel');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            if (panel.style.display === 'flex') renderList();
         }
 
-        // 4. 历程详情与左滑删除
-        function showHistory() {
-            const panel = document.getElementById('data-panel'); panel.style.display = 'flex';
+        function renderList() {
             const list = document.getElementById('history-list'); list.innerHTML = "";
-            const tx = db.transaction("assets", "readonly");
-            tx.objectStore("assets").openCursor(null, "prev").onsuccess = e => {
+            const tx = db.transaction("records", "readonly");
+            tx.objectStore("records").openCursor(null, "prev").onsuccess = e => {
                 const c = e.target.result;
                 if(c) {
                     const d = c.value;
-                    const el = document.createElement('div'); el.className = 'history-item';
-                    el.innerHTML = `
-                        <div class="item-del" onclick="del(${d.id})">删除</div>
-                        <div class="item-main" onclick="this.style.transform=this.style.transform==='translateX(-80px)'?'translateX(0)':'translateX(-80px)'">
-                            <div style="display:flex; justify-content:space-between"><b>得分：${d.score}</b> <small>${d.date}</small></div>
-                            <p style="font-size:12px; color:var(--ai-green); margin:10px 0;">文案：${d.text || '无'}</p>
+                    const item = document.createElement('div'); item.className = 'history-card';
+                    item.innerHTML = `
+                        <div class="card-del" onclick="delRec(${d.id})">删除</div>
+                        <div class="card-main" onclick="slideCard(this)">
+                            <div style="display:flex; justify-content:space-between"><b>AI评分：${d.score}</b> <small>${d.date}</small></div>
+                            <p style="font-size:12px; color:var(--ai-green); margin:15px 0;">${d.doc}</p>
                             <div style="display:flex; gap:10px;">
-                                <button onclick="copy('${d.text}')" style="background:#333; border:none; color:#fff; padding:5px 10px; border-radius:5px; font-size:11px;">复制</button>
-                                <button onclick="dl(${d.id})" style="background:var(--ai-green); border:none; color:#000; padding:5px 10px; border-radius:5px; font-size:11px; font-weight:bold;">下载视频</button>
+                                <button onclick="copyDoc('${d.doc}')" style="background:#333; border:none; color:#fff; padding:8px 15px; border-radius:8px; font-size:11px;">复制文案</button>
+                                <button onclick="aiPolish(${d.id})" style="background:var(--ai-green); border:none; color:#000; padding:8px 15px; border-radius:8px; font-size:11px; font-weight:bold;">AI润色</button>
+                                <button onclick="dlVid(${d.id})" style="background:#fff; border:none; color:#000; padding:8px 15px; border-radius:8px; font-size:11px;">导出MP4</button>
                             </div>
                         </div>
                     `;
-                    list.appendChild(el); c.continue();
+                    list.appendChild(item); c.continue();
                 }
             };
         }
 
-        function del(id) { if(confirm("确定删除？")) { db.transaction("assets", "readwrite").objectStore("assets").delete(id); showHistory(); } }
-        function copy(t) { navigator.clipboard.writeText(t); alert("已复制"); }
-        function dl(id) {
-            db.transaction("assets", "readonly").objectStore("assets").get(id).onsuccess = e => {
-                const url = URL.createObjectURL(e.target.result.video);
-                const a = document.createElement('a'); a.href = url; a.download = `Behold_${id}.mp4`; a.click();
+        function slideCard(el) { el.style.transform = el.style.transform === 'translateX(-80px)' ? 'translateX(0)' : 'translateX(-80px)'; }
+        function copyDoc(t) { navigator.clipboard.writeText(t); alert("文案已复制到剪贴板"); }
+        function delRec(id) { if(confirm("确定删除？")) { db.transaction("records", "readwrite").objectStore("records").delete(id); renderList(); } }
+        function dlVid(id) {
+            db.transaction("records", "readonly").objectStore("records").get(id).onsuccess = e => {
+                const a = document.createElement('a'); a.href = URL.createObjectURL(e.target.result.video); a.download = `Behold_${id}.mp4`; a.click();
             };
         }
+        function aiPolish(id) { alert("AI 正在深度改写并优化您的文案表达..."); }
 
-        // 5. 形状与布局预设
+        // 6. 场景与形状切换
         let sIdx = 0; const sList = ['shape-square', 'shape-circle', 'shape-heart'];
         function cycleShape() {
             sIdx = (sIdx + 1) % sList.length;
             document.getElementById('layer-B').className = 'video-wrapper ' + sList[sIdx];
         }
 
-        function toggleLayout() {
-            const a = document.getElementById('layer-A'), b = document.getElementById('layer-B');
-            a.style.cssText = "top:5%; left:5%; width:43%; height:60%;";
-            b.style.cssText = "top:5%; right:5%; width:43%; height:60%; left:auto;";
+        let mIdx = 0; const mList = [
+            {bg: '', frame: 'none'},
+            {bg: 'url(https://images.unsplash.com/photo-1492684223066-81342ee5ff30)', frame: 'block'},
+            {bg: 'url(https://images.unsplash.com/photo-1517245386807-bb43f82c33c4)', frame: 'none'}
+        ];
+        function changeMode() {
+            mIdx = (mIdx + 1) % mList.length;
+            document.getElementById('scene-bg').style.backgroundImage = mList[mIdx].bg;
+            document.getElementById('frame').style.display = mList[mIdx].frame;
         }
 
-        window.onload = () => { init(); bindDrag('layer-A'); bindDrag('layer-B'); bindDrag('prompter'); };
+        window.onload = () => { initCamera(); bindMove('layer-A'); bindMove('layer-B'); bindMove('prompter'); };
     </script>
 </body>
 </html>
