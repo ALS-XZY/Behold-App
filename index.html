@@ -5,24 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Behold - 君临奇境</title>
     <style>
-        :root { --accent: #ff3b30; --ai-green: #00ff88; --shutter-color: #444; }
-        body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; touch-action: none; }
+        :root { 
+            --accent: #ff3b30; 
+            --ai-green: #00ff88; 
+            --shutter-color: #444;
+            --bg-dark: rgba(0,0,0,0.9);
+            --bg-light: rgba(255,255,255,0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            background: #000;
+            color: white;
+            font-family: -apple-system, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            touch-action: none;
+        }
 
         /* 背景层 */
-        #scene-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: 0.5; transition: 0.5s; }
+        #scene-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.5;
+            transition: opacity 0.5s ease, transform 0.8s ease;
+        }
+        #scene-bg:hover {
+            opacity: 0.6;
+        }
         
         /* 自由视频容器：彻底消除边缘残留 */
-        .video-wrapper { 
-            position: absolute; overflow: hidden; display: flex; align-items: center; justify-content: center;
-            background: #000; transition: border-radius 0.3s, transform 0.2s;
+        .video-wrapper {
+            position: absolute;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             border: 2px solid var(--ai-green);
             touch-action: none;
         }
-        video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+        .video-wrapper:hover {
+            box-shadow: 0 15px 35px rgba(0,0,0,0.9);
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
 
         /* 主画面布局 */
-        #main-wrapper { inset: 0; z-index: 1; }
+        #main-wrapper {
+            inset: 0;
+            z-index: 1;
+        }
 
         /* 自由气泡/分屏窗口 */
         #bubble-wrapper {
@@ -31,31 +77,102 @@
 
         /* 悬浮提词器 */
         #prompter {
-            position: absolute; top: 150px; left: 20px; width: 300px; height: 150px;
-            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
-            border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);
-            display: flex; flex-direction: column; z-index: 100;
+            position: absolute;
+            top: 150px;
+            left: 20px;
+            width: 300px;
+            height: 150px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        #prompter:hover {
+            border-color: var(--ai-green);
         }
         #script-input {
-            flex: 1; background: transparent; border: none; color: #fff;
-            padding: 10px; font-size: 16px; outline: none; resize: none;
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 10px;
+            font-size: 16px;
+            outline: none;
+            resize: none;
+            font-family: -apple-system, sans-serif;
         }
-        .prompter-tools { display: flex; align-items: center; padding: 5px; background: rgba(255,255,255,0.1); border-radius: 0 0 12px 12px; }
-        input[type=range] { flex: 1; accent-color: var(--ai-green); }
+        #script-input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        .prompter-tools {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            background: var(--bg-light);
+            border-radius: 0 0 12px 12px;
+        }
+        input[type=range] {
+            flex: 1;
+            accent-color: var(--ai-green);
+            cursor: pointer;
+        }
 
         /* 极简文字导航栏 */
         .nav-bar {
-            position: fixed; bottom: 30px; width: 94%; left: 3%;
-            display: flex; justify-content: space-around; align-items: center;
-            background: rgba(20,20,20,0.9); padding: 10px 0; border-radius: 35px; z-index: 200;
+            position: fixed;
+            bottom: 30px;
+            width: 94%;
+            left: 3%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: var(--bg-dark);
+            padding: 10px 0;
+            border-radius: 35px;
+            z-index: 200;
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--bg-light);
+            transition: all 0.3s ease;
         }
-        .nav-btn { background: none; border: none; color: #fff; font-size: 14px; font-weight: 500; }
+        .nav-bar:hover {
+            background: rgba(30,30,30,0.95);
+        }
+        .nav-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+        }
+        .nav-btn:hover {
+            background: var(--bg-light);
+            color: var(--ai-green);
+        }
         
         /* 机械快门按钮 */
-        .shutter-wrap { width: 75px; height: 75px; position: relative; cursor: pointer; }
+        .shutter-wrap {
+            width: 75px;
+            height: 75px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .shutter-wrap:hover {
+            transform: scale(1.05);
+        }
         .shutter-blade {
-            position: absolute; inset: 0; background: var(--accent);
-            clip-path: polygon(50% 50%, 100% 0, 100% 100%); /* 模拟单片扇叶 */
+            position: absolute;
+            inset: 0;
+            background: var(--accent);
+            clip-path: polygon(50% 50%, 100% 0, 100% 100%);
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid rgba(0,0,0,0.2);
         }
@@ -69,20 +186,41 @@
         .blade-7 { transform: rotate(270deg) translate(0, -5px); }
         .blade-8 { transform: rotate(315deg) translate(0, -5px); }
 
-        .recording .shutter-blade { transform: rotate(var(--rot)) scale(1.2) translate(0, 0); }
+        .recording .shutter-blade {
+            transform: rotate(var(--rot)) scale(1.2) translate(0, 0);
+        }
 
         /* 历程面板 */
         #data-panel {
-            position: fixed; inset: 0; background: #000; z-index: 300; display: none;
-            flex-direction: column; padding: 50px 20px;
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            padding: 50px 20px;
+            backdrop-filter: blur(20px);
         }
 
         /* 1. 形状库优化 */
-        .shape-circle { border-radius: 50% !important; border: 2px solid var(--ai-green); }
-        .shape-square { border-radius: 24px; clip-path: none; }
-        .shape-trapezoid { clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%); border-radius: 15px; }
-        .shape-heart { clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.568-3.956 4.407-4.457 5.719-4.457 2.213 0 5.281 1.4 5.281 5.191 0 4.105-5.37 8.863-11 14.402z'); }
-        .shape-star { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+        .shape-circle {
+            border-radius: 50% !important;
+            border: 2px solid var(--ai-green);
+        }
+        .shape-square {
+            border-radius: 24px;
+            clip-path: none;
+        }
+        .shape-trapezoid {
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            border-radius: 15px;
+        }
+        .shape-heart {
+            clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.568-3.956 4.407-4.457 5.719-4.457 2.213 0 5.281 1.4 5.281 5.191 0 4.105-5.37 8.863-11 14.402z');
+        }
+        .shape-star {
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
 
         /* 2. 布局缩放逻辑 */
         .layout-split {
@@ -94,32 +232,139 @@
 
         /* 3. 历程卡片 */
         .history-card {
-            background: #1a1a1a; margin-bottom: 10px; border-radius: 12px;
-            overflow: hidden; position: relative; transition: transform 0.3s;
+            background: #1a1a1a;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
-        .card-content { padding: 15px; position: relative; z-index: 2; background: #1a1a1a; }
+        .history-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .card-content {
+            padding: 15px;
+            position: relative;
+            z-index: 2;
+            background: #1a1a1a;
+            cursor: pointer;
+        }
         .delete-btn {
-            position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
-            background: var(--accent); color: white; display: flex; align-items: center;
-            justify-content: center; z-index: 1; font-weight: bold;
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+        .delete-btn:hover {
+            background: #ff5252;
         }
 
         /* 缩放手柄 */
-        .resizer { width: 25px; height: 25px; background: rgba(255,255,255,0.3); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 110; border-radius: 50% 0 0 0; }
+        .resizer {
+            width: 25px;
+            height: 25px;
+            background: rgba(255,255,255,0.3);
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            cursor: nwse-resize;
+            z-index: 110;
+            border-radius: 50% 0 0 0;
+            transition: background 0.2s ease;
+        }
+        .resizer:hover {
+            background: rgba(255,255,255,0.5);
+        }
 
         /* 场景选择器 */
         #scene-picker {
-            position: fixed; bottom: 120px; width: 100%; display: none; flex-direction: row;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(15px);
-            padding: 15px; gap: 15px; overflow-x: auto; z-index: 250;
+            position: fixed;
+            bottom: 120px;
+            width: 100%;
+            display: none;
+            flex-direction: row;
+            background: var(--bg-dark);
+            backdrop-filter: blur(15px);
+            padding: 15px;
+            gap: 15px;
+            overflow-x: auto;
+            z-index: 250;
             box-sizing: border-box;
+            border-top: 1px solid var(--bg-light);
         }
-        .scene-card { flex: 0 0 100px; height: 70px; border-radius: 10px; border: 1px solid #555; background-size: cover; position: relative; background-color: #222; }
-        .scene-card span { position: absolute; bottom: 5px; width: 100%; text-align: center; font-size: 10px; background: rgba(0,0,0,0.5); color: #fff; }
+        #scene-picker::-webkit-scrollbar {
+            height: 4px;
+        }
+        #scene-picker::-webkit-scrollbar-track {
+            background: var(--bg-light);
+            border-radius: 2px;
+        }
+        #scene-picker::-webkit-scrollbar-thumb {
+            background: var(--ai-green);
+            border-radius: 2px;
+        }
+        .scene-card {
+            flex: 0 0 100px;
+            height: 70px;
+            border-radius: 10px;
+            border: 1px solid #555;
+            background-size: cover;
+            position: relative;
+            background-color: #222;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .scene-card:hover {
+            border-color: var(--ai-green);
+            transform: scale(1.05);
+        }
+        .scene-card span {
+            position: absolute;
+            bottom: 5px;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            padding: 2px 0;
+        }
 
         .ai-badge {
-            position: absolute; top: 10px; right: 10px; background: var(--ai-green);
-            color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--ai-green);
+            color: #000;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--bg-light);
+            border-radius: 50%;
+            border-top-color: var(--ai-green);
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -169,267 +414,414 @@
     <div id="data-panel">
         <h2 style="color:var(--ai-green)">成长轨迹 Assets</h2>
         <div id="history-list" style="flex: 1; overflow-y: auto; margin: 20px 0;"></div>
-        <button onclick="toggleData()" style="padding: 18px; background: #222; border: none; color: #fff; border-radius: 12px;">返回</button>
+        <button onclick="toggleData()" style="padding: 18px; background: #222; border: none; color: #fff; border-radius: 12px; transition: all 0.2s ease;">返回</button>
     </div>
 
     <script>
-        let mediaRecorder, recordedChunks = [], currentStream, isRecording = false;
-        let facingMode = "user";
-        let startTime;
-        let layoutIdx = 0;
-        let recognition;
-        let voiceText = "";
+        class BeholdApp {
+            constructor() {
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.currentStream = null;
+                this.isRecording = false;
+                this.facingMode = "user";
+                this.startTime = 0;
+                this.layoutIdx = 0;
+                this.recognition = null;
+                this.voiceText = "";
+                this.db = null;
+                this.shapes = ['shape-square', 'shape-circle', 'shape-trapezoid', 'shape-heart', 'shape-star'];
+                this.shapeIdx = 0;
+                this.sceneLibrary = [
+                    { name: '原生', url: '' },
+                    { name: '发布会', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30' },
+                    { name: '讲堂', url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4' },
+                    { name: '旅游', url: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1' },
+                    { name: '备忘录', url: 'https://images.unsplash.com/photo-1517842645767-c639042777db' }
+                ];
+                this.init();
+            }
 
-        // 1. 初始化本地数据库 (IndexedDB)
-        let db;
-        const request = indexedDB.open("BeholdAssetDB", 1);
-        request.onupgradeneeded = e => {
-            db = e.target.result;
-            db.createObjectStore("assets", { keyPath: "id" });
-        };
-        request.onsuccess = e => db = e.target.result;
+            async init() {
+                await this.initDatabase();
+                await this.initSpeechRecognition();
+                await this.startSystem();
+                this.makeDraggable('main-wrapper');
+                this.makeDraggable('bubble-wrapper');
+                this.makeDraggable('prompter');
+            }
 
-        // 语音识别初始化
-        if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'zh-CN';
-            recognition.onresult = e => {
-                let interim = "";
-                for (let i = e.resultIndex; i < e.results.length; ++i) {
-                    if (e.results[i].isFinal) voiceText += e.results[i][0].transcript;
-                    else interim += e.results[i][0].transcript;
-                }
-                document.getElementById('script-input').value = voiceText + interim;
-            };
-        }
-
-        const sceneLibrary = [
-            { name: '原生', url: '' },
-            { name: '发布会', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30' },
-            { name: '讲堂', url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4' },
-            { name: '旅游', url: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1' },
-            { name: '备忘录', url: 'https://images.unsplash.com/photo-1517842645767-c639042777db' }
-        ];
-
-        // 2. 增强形状库
-        const shapes = ['shape-square', 'shape-circle', 'shape-trapezoid', 'shape-heart', 'shape-star'];
-        let shapeIdx = 0;
-        function changeShape() {
-            shapeIdx = (shapeIdx + 1) % shapes.length;
-            document.getElementById('bubble-wrapper').className = 'video-wrapper ' + shapes[shapeIdx];
-            document.getElementById('main-wrapper').className = 'video-wrapper ' + shapes[shapeIdx];
-        }
-
-        async function startSystem() {
-            if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }, 
-                    audio: true 
+            initDatabase() {
+                return new Promise((resolve) => {
+                    const request = indexedDB.open("BeholdAssetDB", 1);
+                    request.onupgradeneeded = (e) => {
+                        this.db = e.target.result;
+                        if (!this.db.objectStoreNames.contains('assets')) {
+                            this.db.createObjectStore("assets", { keyPath: "id" });
+                        }
+                    };
+                    request.onsuccess = (e) => {
+                        this.db = e.target.result;
+                        resolve();
+                    };
+                    request.onerror = () => {
+                        console.error('数据库初始化失败');
+                        resolve();
+                    };
                 });
-                const bgV = document.getElementById('video-bg');
-                const bubV = document.getElementById('video-bubble');
-                bgV.srcObject = currentStream;
-                bubV.srcObject = currentStream;
-                const transform = facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
-                bgV.style.transform = transform;
-                bubV.style.transform = transform;
-                window.localStream = currentStream;
-            } catch (err) { alert("镜头启动失败，请检查权限"); }
-        }
-
-        function switchCam() {
-            facingMode = facingMode === "user" ? "environment" : "user";
-            startSystem();
-        }
-
-        // 1. 全自由拖拽逻辑
-        function makeDraggable(id) {
-            const el = document.getElementById(id);
-            let offset = [0,0], isDown = false;
-            el.onpointerdown = e => {
-                if (e.target.className === 'resizer' || e.target.tagName === 'TEXTAREA') return;
-                isDown = true; el.setPointerCapture(e.pointerId);
-                offset = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY];
-            };
-            el.onpointermove = e => {
-                if (!isDown) return;
-                el.style.left = (e.clientX + offset[0]) + 'px';
-                el.style.top = (e.clientY + offset[1]) + 'px';
-            };
-            el.onpointerup = () => isDown = false;
-        }
-
-        // 2. 自由缩放逻辑
-        function initResize(e, id) {
-            e.stopPropagation();
-            const el = document.getElementById(id);
-            const startW = el.offsetWidth, startH = el.offsetHeight;
-            const startX = e.clientX, startY = e.clientY;
-            
-            const doResize = e => {
-                el.style.width = (startW + (e.clientX - startX)) + 'px';
-                el.style.height = (startH + (e.clientY - startY)) + 'px';
-            };
-            const stopResize = () => {
-                window.removeEventListener('pointermove', doResize);
-                window.removeEventListener('pointerup', stopResize);
-            };
-            window.addEventListener('pointermove', doResize);
-            window.addEventListener('pointerup', stopResize);
-        }
-
-        function adjOpac(v) { document.getElementById('prompter').style.background = `rgba(0,0,0,${v})`; }
-
-        // 3. 布局快速预设 (依然支持后期随意拖动)
-        function toggleLayout() {
-            layoutIdx = (layoutIdx + 1) % 3;
-            const main = document.getElementById('main-wrapper');
-            const bub = document.getElementById('bubble-wrapper');
-            
-            if (layoutIdx === 1) { // 左右
-                main.style.cssText = "top:15%; left:5%; width:43%; height:50%;";
-                bub.style.cssText = "top:15%; right:5%; width:43%; height:50%; left:auto;";
-            } else if (layoutIdx === 2) { // 上下
-                main.style.cssText = "top:5%; left:10%; width:80%; height:35%;";
-                bub.style.cssText = "bottom:20%; left:10%; width:80%; height:35%; top:auto;";
-            } else { // 重置为默认
-                main.style.cssText = "top:10%; left:5%; width:90%; height:40%;";
-                bub.style.cssText = "top:55%; left:25%; width:150px; height:150px;";
             }
-        }
 
-        function handleRecord() {
-            isRecording = !isRecording;
-            const btn = document.getElementById('shutter');
-            btn.classList.toggle('recording', isRecording);
-
-            if (isRecording) {
-                recordedChunks = [];
-                voiceText = "";
-                startTime = Date.now();
-                const options = { mimeType: 'video/mp4' };
-                mediaRecorder = new MediaRecorder(currentStream, options);
-                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-                mediaRecorder.onstop = saveVideo;
-                mediaRecorder.start();
-                if(recognition) recognition.start();
-            } else {
-                mediaRecorder.stop();
-                if(recognition) recognition.stop();
+            initSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window) {
+                    this.recognition = new webkitSpeechRecognition();
+                    this.recognition.continuous = true;
+                    this.recognition.interimResults = true;
+                    this.recognition.lang = 'zh-CN';
+                    this.recognition.onresult = (e) => {
+                        let interim = "";
+                        for (let i = e.resultIndex; i < e.results.length; ++i) {
+                            if (e.results[i].isFinal) {
+                                this.voiceText += e.results[i][0].transcript;
+                            } else {
+                                interim += e.results[i][0].transcript;
+                            }
+                        }
+                        document.getElementById('script-input').value = this.voiceText + interim;
+                    };
+                    this.recognition.onerror = (err) => {
+                        console.error('语音识别错误:', err);
+                    };
+                }
             }
-        }
 
-        // 4. 录制并存入历程 (不自动下载)
-        async function saveVideo() {
-            const videoBlob = new Blob(recordedChunks, { type: 'video/mp4' });
-            const userText = document.getElementById('script-input').value || "未检测到语音";
-            const duration = Math.floor((Date.now() - startTime) / 1000);
-            
-            const record = {
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                video: videoBlob,
-                content: userText,
-                score: Math.min(100, 80 + Math.random() * 20).toFixed(0),
-                advise: "AI 建议：保持目前节奏，在结尾处增加互动引导。"
-            };
-
-            const tx = db.transaction("assets", "readwrite");
-            tx.objectStore("assets").add(record);
-            alert("资产已存入历程，可前往查看并导出 MP4");
-        }
-
-        // 5. 从历程导出 MP4
-        function downloadVid(id) {
-            const tx = db.transaction("assets", "readonly");
-            const getReq = tx.objectStore("assets").get(id);
-            getReq.onsuccess = () => {
-                const data = getReq.result;
-                const url = URL.createObjectURL(data.video);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `Behold_Export_${id}.mp4`;
-                a.click();
-            };
-        }
-
-        function deleteAsset(id) {
-            if(confirm("确定删除此项资产吗？")) {
-                db.transaction("assets", "readwrite").objectStore("assets").delete(id);
-                toggleData();
+            async startSystem() {
+                if (this.currentStream) {
+                    this.currentStream.getTracks().forEach(t => t.stop());
+                }
+                try {
+                    this.currentStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: this.facingMode, 
+                            width: { ideal: 1920 }, 
+                            height: { ideal: 1080 }
+                        }, 
+                        audio: true 
+                    });
+                    const bgV = document.getElementById('video-bg');
+                    const bubV = document.getElementById('video-bubble');
+                    bgV.srcObject = this.currentStream;
+                    bubV.srcObject = this.currentStream;
+                    const transform = this.facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
+                    bgV.style.transform = transform;
+                    bubV.style.transform = transform;
+                    window.localStream = this.currentStream;
+                } catch (err) {
+                    alert("镜头启动失败，请检查权限");
+                    console.error('摄像头启动失败:', err);
+                }
             }
-        }
 
-        function expandCard(el) {
-            const det = el.querySelector('.details');
-            det.style.display = det.style.display === 'none' ? 'block' : 'none';
-        }
+            switchCam() {
+                this.facingMode = this.facingMode === "user" ? "environment" : "user";
+                this.startSystem();
+            }
 
-        function toggleData() {
-            const panel = document.getElementById('data-panel');
-            const list = document.getElementById('history-list');
-            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            makeDraggable(id) {
+                const el = document.getElementById(id);
+                let offset = [0, 0];
+                let isDown = false;
 
-            if (panel.style.display === 'flex') {
-                list.innerHTML = "";
-                const tx = db.transaction("assets", "readonly");
-                tx.objectStore("assets").openCursor(null, "prev").onsuccess = e => {
-                    const cursor = e.target.result;
-                    if (cursor) {
-                        const item = cursor.value;
-                        const card = document.createElement('div');
-                        card.className = 'history-card';
-                        card.innerHTML = `
-                            <div class="delete-btn" onclick="deleteAsset(${item.id})"><button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;">删除</button></div>
-                            <div class="card-content" onclick="expandCard(this)">
-                                <div style="display:flex; justify-content:space-between">
-                                    <b>评分：${item.score}</b> <small>${item.date}</small>
-                                </div>
-                                <div class="details" style="display:none; margin-top:10px; font-size:13px; border-top:1px solid #333; padding-top:10px;">
-                                    <p style="color:var(--ai-green)">语音资产：${item.content}</p>
-                                    <p>AI 建议：${item.advise}</p>
-                                    <button onclick="downloadVid(${item.id})" style="width:100%; padding:10px; background:var(--ai-green); border:none; border-radius:8px; font-weight:bold; margin-top:10px;">下载 MP4 到相册</button>
-                                </div>
-                            </div>
-                        `;
-                        // 左右滑动删除手势模拟
-                        let startX;
-                        card.addEventListener('touchstart', e => startX = e.touches[0].clientX);
-                        card.addEventListener('touchmove', e => {
-                            let diff = e.touches[0].clientX - startX;
-                            if(diff < -50) card.style.transform = "translateX(-80px)";
-                            if(diff > 50) card.style.transform = "translateX(0)";
-                        });
-                        list.appendChild(card);
-                        cursor.continue();
+                el.onpointerdown = (e) => {
+                    if (e.target.className === 'resizer' || e.target.tagName === 'TEXTAREA') {
+                        return;
                     }
+                    isDown = true;
+                    el.setPointerCapture(e.pointerId);
+                    offset = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY];
+                };
+
+                el.onpointermove = (e) => {
+                    if (!isDown) return;
+                    el.style.left = (e.clientX + offset[0]) + 'px';
+                    el.style.top = (e.clientY + offset[1]) + 'px';
+                };
+
+                el.onpointerup = () => {
+                    isDown = false;
                 };
             }
+
+            initResize(e, id) {
+                e.stopPropagation();
+                const el = document.getElementById(id);
+                const startW = el.offsetWidth;
+                const startH = el.offsetHeight;
+                const startX = e.clientX;
+                const startY = e.clientY;
+
+                const doResize = (e) => {
+                    el.style.width = Math.max(100, startW + (e.clientX - startX)) + 'px';
+                    el.style.height = Math.max(100, startH + (e.clientY - startY)) + 'px';
+                };
+
+                const stopResize = () => {
+                    window.removeEventListener('pointermove', doResize);
+                    window.removeEventListener('pointerup', stopResize);
+                };
+
+                window.addEventListener('pointermove', doResize);
+                window.addEventListener('pointerup', stopResize);
+            }
+
+            adjOpac(v) {
+                document.getElementById('prompter').style.background = `rgba(0,0,0,${v})`;
+            }
+
+            toggleLayout() {
+                this.layoutIdx = (this.layoutIdx + 1) % 3;
+                const main = document.getElementById('main-wrapper');
+                const bub = document.getElementById('bubble-wrapper');
+
+                if (this.layoutIdx === 1) {
+                    main.style.cssText = "top:15%; left:5%; width:43%; height:50%;";
+                    bub.style.cssText = "top:15%; right:5%; width:43%; height:50%; left:auto;";
+                } else if (this.layoutIdx === 2) {
+                    main.style.cssText = "top:5%; left:10%; width:80%; height:35%;";
+                    bub.style.cssText = "bottom:20%; left:10%; width:80%; height:35%; top:auto;";
+                } else {
+                    main.style.cssText = "top:10%; left:5%; width:90%; height:40%;";
+                    bub.style.cssText = "top:55%; left:25%; width:150px; height:150px;";
+                }
+            }
+
+            changeShape() {
+                this.shapeIdx = (this.shapeIdx + 1) % this.shapes.length;
+                document.getElementById('bubble-wrapper').className = 'video-wrapper ' + this.shapes[this.shapeIdx];
+                document.getElementById('main-wrapper').className = 'video-wrapper ' + this.shapes[this.shapeIdx];
+            }
+
+            handleRecord() {
+                this.isRecording = !this.isRecording;
+                const btn = document.getElementById('shutter');
+                btn.classList.toggle('recording', this.isRecording);
+
+                if (this.isRecording) {
+                    this.recordedChunks = [];
+                    this.voiceText = "";
+                    this.startTime = Date.now();
+                    try {
+                        const options = { mimeType: 'video/mp4' };
+                        this.mediaRecorder = new MediaRecorder(this.currentStream, options);
+                        this.mediaRecorder.ondataavailable = (e) => {
+                            if (e.data.size > 0) {
+                                this.recordedChunks.push(e.data);
+                            }
+                        };
+                        this.mediaRecorder.onstop = () => this.saveVideo();
+                        this.mediaRecorder.start(1000);
+                        if (this.recognition) {
+                            this.recognition.start();
+                        }
+                    } catch (err) {
+                        console.error('录制启动失败:', err);
+                        alert('录制启动失败，请检查权限');
+                        this.isRecording = false;
+                        btn.classList.remove('recording');
+                    }
+                } else {
+                    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                        this.mediaRecorder.stop();
+                    }
+                    if (this.recognition) {
+                        this.recognition.stop();
+                    }
+                }
+            }
+
+            async saveVideo() {
+                try {
+                    const videoBlob = new Blob(this.recordedChunks, { type: 'video/mp4' });
+                    const userText = document.getElementById('script-input').value || "未检测到语音";
+                    const duration = Math.floor((Date.now() - this.startTime) / 1000);
+
+                    const record = {
+                        id: Date.now(),
+                        date: new Date().toLocaleString(),
+                        video: videoBlob,
+                        content: userText,
+                        score: Math.min(100, 80 + Math.random() * 20).toFixed(0),
+                        advise: "AI 建议：保持目前节奏，在结尾处增加互动引导。"
+                    };
+
+                    if (this.db) {
+                        const tx = this.db.transaction("assets", "readwrite");
+                        const store = tx.objectStore("assets");
+                        store.add(record);
+                        tx.oncomplete = () => {
+                            alert("资产已存入历程，可前往查看并导出 MP4");
+                        };
+                        tx.onerror = () => {
+                            console.error('存储失败');
+                            alert('存储失败，请重试');
+                        };
+                    } else {
+                        alert('数据库未初始化，存储失败');
+                    }
+                } catch (err) {
+                    console.error('保存视频失败:', err);
+                    alert('保存视频失败，请重试');
+                }
+            }
+
+            downloadVid(id) {
+                if (!this.db) {
+                    alert('数据库未初始化');
+                    return;
+                }
+
+                const tx = this.db.transaction("assets", "readonly");
+                const store = tx.objectStore("assets");
+                const getReq = store.get(id);
+                getReq.onsuccess = () => {
+                    const data = getReq.result;
+                    if (data) {
+                        const url = URL.createObjectURL(data.video);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Behold_Export_${id}.mp4`;
+                        a.click();
+                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    } else {
+                        alert('视频数据不存在');
+                    }
+                };
+                getReq.onerror = () => {
+                    alert('获取视频失败');
+                };
+            }
+
+            deleteAsset(id) {
+                if (!this.db) {
+                    alert('数据库未初始化');
+                    return;
+                }
+
+                if (confirm("确定删除此项资产吗？")) {
+                    const tx = this.db.transaction("assets", "readwrite");
+                    const store = tx.objectStore("assets");
+                    store.delete(id);
+                    tx.oncomplete = () => {
+                        this.toggleData();
+                    };
+                    tx.onerror = () => {
+                        alert('删除失败');
+                    };
+                }
+            }
+
+            expandCard(el) {
+                const det = el.querySelector('.details');
+                det.style.display = det.style.display === 'none' ? 'block' : 'none';
+            }
+
+            toggleData() {
+                const panel = document.getElementById('data-panel');
+                const list = document.getElementById('history-list');
+                panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+
+                if (panel.style.display === 'flex') {
+                    list.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div><p style="margin-top: 10px;">加载中...</p></div>';
+                    
+                    if (this.db) {
+                        const tx = this.db.transaction("assets", "readonly");
+                        const store = tx.objectStore("assets");
+                        const request = store.openCursor(null, "prev");
+                        const items = [];
+
+                        request.onsuccess = (e) => {
+                            const cursor = e.target.result;
+                            if (cursor) {
+                                items.push(cursor.value);
+                                cursor.continue();
+                            } else {
+                                this.renderHistory(items);
+                            }
+                        };
+
+                        request.onerror = () => {
+                            list.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff3b30;">加载失败</div>';
+                        };
+                    } else {
+                        setTimeout(() => {
+                            list.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff3b30;">数据库未初始化</div>';
+                        }, 500);
+                    }
+                }
+            }
+
+            renderHistory(items) {
+                const list = document.getElementById('history-list');
+                if (items.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;">暂无录制记录</div>';
+                    return;
+                }
+
+                list.innerHTML = items.map(item => `
+                    <div class="history-card">
+                        <div class="delete-btn" onclick="app.deleteAsset(${item.id})"><button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;">删除</button></div>
+                        <div class="card-content" onclick="app.expandCard(this)">
+                            <div style="display:flex; justify-content:space-between">
+                                <b>评分：${item.score}</b> <small>${item.date}</small>
+                            </div>
+                            <div class="details" style="display:none; margin-top:10px; font-size:13px; border-top:1px solid #333; padding-top:10px;">
+                                <p style="color:var(--ai-green)">语音资产：${item.content}</p>
+                                <p>AI 建议：${item.advise}</p>
+                                <button onclick="app.downloadVid(${item.id})" style="width:100%; padding:10px; background:var(--ai-green); border:none; border-radius:8px; font-weight:bold; margin-top:10px; transition: all 0.2s ease;">下载 MP4 到相册</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // 添加滑动删除手势
+                document.querySelectorAll('.history-card').forEach(card => {
+                    let startX;
+                    card.addEventListener('touchstart', e => {
+                        startX = e.touches[0].clientX;
+                    });
+                    card.addEventListener('touchmove', e => {
+                        let diff = e.touches[0].clientX - startX;
+                        if (diff < -50) {
+                            card.style.transform = "translateX(-80px)";
+                        } else if (diff > 50) {
+                            card.style.transform = "translateX(0)";
+                        }
+                    });
+                });
+            }
+
+            openScenePicker() {
+                const picker = document.getElementById('scene-picker');
+                picker.style.display = picker.style.display === 'flex' ? 'none' : 'flex';
+                
+                if (picker.style.display === 'flex') {
+                    picker.innerHTML = this.sceneLibrary.map(s => `
+                        <div class="scene-card" style="background-image:url('${s.url}')" onclick="app.applyScene('${s.url}')">
+                            <span>${s.name}</span>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            applyScene(url) {
+                document.getElementById('scene-bg').style.backgroundImage = url ? `url(${url})` : 'none';
+                document.getElementById('scene-picker').style.display = 'none';
+            }
         }
 
-        function openScenePicker() {
-            const picker = document.getElementById('scene-picker');
-            picker.style.display = picker.style.display === 'flex' ? 'none' : 'flex';
-            picker.innerHTML = sceneLibrary.map((s, idx) => `
-                <div class="scene-card" style="background-image:url('${s.url}')" onclick="applyScene('${s.url}')">
-                    <span>${s.name}</span>
-                </div>
-            `).join('');
-        }
-
-        function applyScene(url) {
-            document.getElementById('scene-bg').style.backgroundImage = url ? `url(${url})` : 'none';
-            document.getElementById('scene-picker').style.display = 'none';
-        }
-
-        window.onload = () => { 
-            startSystem(); 
-            makeDraggable('main-wrapper'); 
-            makeDraggable('bubble-wrapper'); 
-            makeDraggable('prompter'); 
+        // 初始化应用
+        let app;
+        window.onload = () => {
+            app = new BeholdApp();
         };
     </script>
 </body>
