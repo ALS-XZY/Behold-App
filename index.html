@@ -3,72 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Behold V6.0 - 全能大师版</title>
+    <title>Behold V7.0 - 旗舰合成版</title>
     <style>
         :root { --accent: #ff3b30; --ai-green: #00ff88; --glass: rgba(0,0,0,0.6); }
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; touch-action: none; }
 
-        /* 视频合成画布 - 离屏处理 */
-        #render-canvas { position: fixed; top: -10000px; }
+        /* 核心合成画布 - 录制此画布以确保包含所有元素 */
+        #main-recorder-canvas { position: fixed; top: -10000px; left: -10000px; width: 1280px; height: 720px; }
 
-        /* 背景与创意贴纸 */
         #scene-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; transition: 0.8s; }
         .sticker-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; background-size: contain; background-repeat: no-repeat; background-position: center; }
 
-        /* 视频视窗：彻底去除多余线条 */
         .video-wrapper { 
             position: absolute; overflow: hidden; display: flex; align-items: center; justify-content: center;
-            background: #000; z-index: 10; touch-action: none; transition: clip-path 0.3s, border-radius 0.3s;
+            background: #000; z-index: 10; touch-action: none;
         }
         video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
-        /* 形状类声明 */
-        .shape-square { border-radius: 24px; clip-path: none; }
+        /* 形状 */
+        .shape-square { border-radius: 24px; }
         .shape-circle { clip-path: circle(50% at 50% 50%); border-radius: 50% !important; }
         .shape-heart { clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.568-3.956 4.407-4.457 5.719-4.457 2.213 0 5.281 1.4 5.281 5.191 0 4.105-5.37 8.863-11 14.402z'); }
 
-        .resizer { width: 30px; height: 30px; background: rgba(255,255,255,0.2); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 100; border-radius: 100% 0 0 0; }
+        .resizer { width: 35px; height: 35px; background: rgba(255,255,255,0.2); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 100; border-radius: 100% 0 0 0; }
 
-        /* 提词器 */
         #prompter {
             position: absolute; z-index: 150; padding: 12px; border-radius: 15px;
-            display: flex; flex-direction: column; min-width: 200px; background: var(--glass);
+            display: flex; flex-direction: column; min-width: 250px; background: var(--glass);
             border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
         }
         #script-input { flex: 1; background: transparent; border: none; color: #fff; font-size: 18px; outline: none; resize: none; }
 
-        /* 场景选择器 */
-        #scene-picker {
-            position: fixed; bottom: 130px; width: 100%; display: none;
-            gap: 15px; padding: 15px; overflow-x: auto; background: var(--glass); z-index: 250;
-        }
-        .scene-card { flex: 0 0 80px; height: 60px; border-radius: 10px; border: 1px solid #555; background-size: cover; position: relative; }
-
-        /* 紧凑型滑动菜单 */
-        .nav-container {
-            position: fixed; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 300;
-        }
-        .shutter-btn { width: 70px; height: 70px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
-        .shutter-iris { width: 60px; height: 60px; border: 3px solid #fff; border-radius: 50%; overflow: hidden; position: relative; }
+        /* 滑动菜单与快门 */
+        .nav-container { position: fixed; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 300; }
+        .shutter-btn { width: 75px; height: 75px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .shutter-iris { width: 65px; height: 65px; border: 3px solid #fff; border-radius: 50%; overflow: hidden; position: relative; }
         .blade { position: absolute; width: 100%; height: 100%; background: #111; clip-path: polygon(50% 50%, 100% 0, 100% 65%); transition: 0.3s; transform-origin: center; border: 0.5px solid var(--accent); }
         .recording .blade { transform: rotate(40deg) scale(0.6); background: var(--accent); }
 
-        .scroll-menu {
-            display: flex; gap: 30px; overflow-x: auto; width: 80%; padding: 5px 20px;
-            scrollbar-width: none; mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
-        }
-        .nav-text { flex: 0 0 auto; background: none; border: none; color: #fff; font-size: 13px; opacity: 0.6; font-weight: 500; }
+        .scroll-menu { display: flex; gap: 25px; overflow-x: auto; width: 85%; padding: 10px; scrollbar-width: none; mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); }
+        .nav-text { flex: 0 0 auto; background: none; border: none; color: #fff; font-size: 14px; opacity: 0.7; }
         .nav-text.active { opacity: 1; color: var(--ai-green); }
 
-        /* 历程资产 */
-        #data-panel { position: fixed; inset: 0; background: #000; z-index: 500; display: none; flex-direction: column; padding: 60px 20px; }
-        .history-card { background: #1a1a1a; margin-bottom: 15px; border-radius: 15px; padding: 15px; position: relative; }
-        .del-badge { position: absolute; top: 10px; right: 10px; color: var(--accent); font-size: 12px; }
+        #scene-picker { position: fixed; bottom: 140px; width: 90%; left: 5%; display: none; gap: 10px; padding: 10px; overflow-x: auto; background: var(--glass); z-index: 250; border-radius: 15px; }
+        .scene-card { flex: 0 0 70px; height: 50px; border-radius: 8px; background-size: cover; border: 1px solid #777; }
+
+        #data-panel { position: fixed; inset: 0; background: #000; z-index: 500; display: none; flex-direction: column; padding: 60px 20px; overflow-y: auto; }
+        .history-card { background: #1a1a1a; margin-bottom: 15px; border-radius: 15px; padding: 20px; position: relative; border: 1px solid #333; }
     </style>
 </head>
 <body>
 
-    <canvas id="render-canvas" width="1280" height="720"></canvas>
+    <canvas id="main-recorder-canvas" width="1280" height="720"></canvas>
+
     <div id="scene-bg"></div>
     <div id="sticker" class="sticker-layer"></div>
     
@@ -76,21 +63,21 @@
         <video id="v-main" autoplay playsinline muted></video>
         <div class="resizer" onpointerdown="initResize(event, 'layer-main')"></div>
     </div>
-    <div id="layer-sub" class="video-wrapper shape-circle" style="top:60%; left:10%; width:150px; height:150px;">
+    <div id="layer-sub" class="video-wrapper shape-circle" style="top:60%; left:10%; width:160px; height:160px;">
         <video id="v-sub" autoplay playsinline muted></video>
         <div class="resizer" onpointerdown="initResize(event, 'layer-sub')"></div>
     </div>
 
     <div id="prompter" style="top:150px; left:20px; width:280px; height:120px;">
-        <textarea id="script-input" placeholder="语音转文字中..."></textarea>
-        <input type="range" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById('prompter').style.background=`rgba(0,0,0,${this.value})`">
+        <textarea id="script-input" placeholder="等待语音输入..."></textarea>
+        <input type="range" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById('prompter').style.background=`rgba(0,0,0,${this.value})`" style="width:100px;">
         <div class="resizer" onpointerdown="initResize(event, 'prompter')"></div>
     </div>
 
     <div id="scene-picker"></div>
 
     <div class="nav-container">
-        <div class="shutter-btn" onclick="handleRec()">
+        <div class="shutter-btn" onclick="toggleRecord()">
             <div class="shutter-iris" id="iris">
                 <div class="blade" style="transform:rotate(0deg)"></div>
                 <div class="blade" style="transform:rotate(60deg)"></div>
@@ -101,38 +88,34 @@
             </div>
         </div>
         <div class="scroll-menu">
-            <button class="nav-text" onclick="toggleData()">历程</button>
-            <button class="nav-text" onclick="openScenes()">场景</button>
-            <button class="nav-text active">拍摄</button>
-            <button class="nav-text" onclick="cycleShape()">形状</button>
+            <button class="nav-text" onclick="showData()">历程</button>
+            <button class="nav-text" onclick="showScenes()">场景</button>
+            <button class="nav-text active">视频</button>
+            <button class="nav-text" onclick="changeShape()">形状</button>
             <button class="nav-text" onclick="switchCam()">切换</button>
-            <button class="nav-text" onclick="addSticker()">贴图</button>
+            <button class="nav-text" onclick="toggleSticker()">贴纸</button>
         </div>
     </div>
 
     <div id="data-panel">
-        <h2 style="color:var(--ai-green)">成长资产</h2>
-        <div id="history-list" style="flex:1; overflow-y:auto;"></div>
-        <button onclick="toggleData()" style="padding:15px; background:#222; border:none; color:#fff; border-radius:12px;">返回</button>
+        <h2 style="color:var(--ai-green)">历程资产 (Assets)</h2>
+        <div id="history-list"></div>
+        <button onclick="showData()" style="padding:20px; background:#222; border:none; color:#fff; border-radius:15px; margin-top:20px;">返回拍摄</button>
     </div>
 
     <script>
-        let db, recorder, chunks = [], isRec = false, recognition, stream;
+        let db, recorder, chunks = [], isRecording = false, stream, recognition;
         let currentFacing = "user", shapeIdx = 0;
         const shapes = ['shape-square', 'shape-circle', 'shape-heart'];
+        const canvas = document.getElementById('main-recorder-canvas');
+        const ctx = canvas.getContext('2d');
 
-        const scenes = [
-            {name:'无', url:''},
-            {name:'面试', url:'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2'},
-            {name:'演讲', url:'https://images.unsplash.com/photo-1475721027785-f74eccf877e2'},
-            {name:'复古', url:'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310'}
-        ];
+        // 1. 初始化数据库
+        const request = indexedDB.open("BeholdUltraDB", 1);
+        request.onupgradeneeded = e => e.target.result.createObjectStore("videos", {keyPath: "id"});
+        request.onsuccess = e => db = e.target.result;
 
-        // 1. 初始化
-        const req = indexedDB.open("BeholdFinalDB", 2);
-        req.onupgradeneeded = e => e.target.result.createObjectStore("assets", {keyPath: "id"});
-        req.onsuccess = e => db = e.target.result;
-
+        // 2. 语音识别
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.continuous = true; recognition.interimResults = true;
@@ -142,8 +125,8 @@
             };
         }
 
-        async function init() {
-            if (stream) { /* 不停止，仅在切换时处理轨道 */ }
+        async function initCamera() {
+            if (stream) { /* 保持轨道不彻底关停 */ }
             stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: currentFacing}, audio: true});
             document.getElementById('v-main').srcObject = stream;
             document.getElementById('v-sub').srcObject = stream;
@@ -151,18 +134,49 @@
 
         function switchCam() {
             currentFacing = currentFacing === "user" ? "environment" : "user";
-            init(); // 切换时，MediaRecorder由于绑定的是stream对象，会继续捕获
+            initCamera();
         }
 
-        // 2. 录制逻辑
-        function handleRec() {
-            isRec = !isRec;
-            document.getElementById('iris').parentElement.classList.toggle('recording', isRec);
-            if (isRec) {
+        // 3. 核心：合成录制引擎
+        function renderToCanvas() {
+            if (!isRecording) return;
+
+            // A. 画场景背景
+            const bg = document.getElementById('scene-bg');
+            ctx.fillStyle = "#000"; ctx.fillRect(0,0,1280,720);
+            // 这里可以根据应用场景添加实际图片绘制逻辑
+
+            // B. 画主视频 (1280x720)
+            ctx.drawImage(document.getElementById('v-main'), 0, 0, 1280, 720);
+
+            // C. 画形状副视频 (合成圆形遮罩)
+            ctx.save();
+            ctx.beginPath(); ctx.arc(1000, 550, 150, 0, Math.PI*2); ctx.clip();
+            ctx.drawImage(document.getElementById('v-sub'), 850, 400, 300, 300);
+            ctx.restore();
+
+            // D. 画提词器文字
+            ctx.fillStyle = "rgba(0,255,136,0.8)";
+            ctx.font = "30px Arial";
+            ctx.fillText(document.getElementById('script-input').value.substring(0, 30), 50, 650);
+
+            requestAnimationFrame(renderToCanvas);
+        }
+
+        function toggleRecord() {
+            isRecording = !isRecording;
+            document.getElementById('iris').parentElement.classList.toggle('recording', isRecording);
+            
+            if (isRecording) {
                 chunks = [];
-                recorder = new MediaRecorder(stream, {mimeType: 'video/webm;codecs=vp8'});
+                renderToCanvas();
+                const canvasStream = canvas.captureStream(30);
+                const audioTrack = stream.getAudioTracks()[0];
+                const combined = new MediaStream([canvasStream.getVideoTracks()[0], audioTrack]);
+                
+                recorder = new MediaRecorder(combined, {mimeType: 'video/webm;codecs=vp8'});
                 recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = saveToDB;
+                recorder.onstop = saveAsset;
                 recorder.start();
                 if(recognition) recognition.start();
             } else {
@@ -171,71 +185,71 @@
             }
         }
 
-        async function saveToDB() {
+        async function saveAsset() {
             const blob = new Blob(chunks, {type: 'video/mp4'});
             const id = Date.now();
-            const tx = db.transaction("assets", "readwrite");
-            tx.objectStore("assets").add({
-                id: id, video: blob, date: new Date().toLocaleString(),
-                text: document.getElementById('script-input').value
+            const tx = db.transaction("videos", "readwrite");
+            tx.objectStore("videos").add({
+                id: id, blob: blob, date: new Date().toLocaleString(), text: document.getElementById('script-input').value
             });
-            alert("已存入历程资产，请在历程中导出到相册");
+            alert("录制已保存至历程资产");
         }
 
-        // 3. UI 交互
-        function cycleShape() {
-            shapeIdx = (shapeIdx + 1) % shapes.length;
-            document.getElementById('layer-sub').className = 'video-wrapper ' + shapes[shapeIdx];
-        }
-
-        function openScenes() {
-            const p = document.getElementById('scene-picker');
-            p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
-            p.innerHTML = scenes.map(s => `<div class="scene-card" style="background-image:url('${s.url}')" onclick="applyScene('${s.url}')"></div>`).join('');
-        }
-
-        function applyScene(url) {
-            document.getElementById('scene-bg').style.backgroundImage = url ? `url(${url})` : 'none';
-            document.getElementById('scene-picker').style.display = 'none';
-        }
-
-        function addSticker() {
-            const s = document.getElementById('sticker');
-            s.style.backgroundImage = s.style.backgroundImage ? 'none' : 'url(https://www.transparenttextures.com/patterns/carbon-fibre.png)'; // 示例贴图
-        }
-
-        function toggleData() {
+        // 4. 功能逻辑
+        function showData() {
             const p = document.getElementById('data-panel');
             p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
-            if (p.style.display === 'flex') renderHistory();
+            if(p.style.display === 'flex') loadHistory();
         }
 
-        function renderHistory() {
+        function loadHistory() {
             const list = document.getElementById('history-list'); list.innerHTML = "";
-            db.transaction("assets").objectStore("assets").openCursor(null, "prev").onsuccess = e => {
+            db.transaction("videos").objectStore("videos").openCursor(null, "prev").onsuccess = e => {
                 const c = e.target.result;
                 if(c) {
                     const d = c.value;
                     const item = document.createElement('div'); item.className = 'history-card';
                     item.innerHTML = `
-                        <b>录制于：${d.date}</b><div class="del-badge" onclick="del(${d.id})">删除</div>
-                        <p style="font-size:12px; color:var(--ai-green); margin:10px 0;">文案：${d.text || '无语音记录'}</p>
-                        <button onclick="download(${d.id})" style="width:100%; padding:10px; background:var(--ai-green); border:none; border-radius:10px; font-weight:bold;">下载视频到相册</button>
+                        <b>时间：${d.date}</b>
+                        <p style="font-size:12px; color:var(--ai-green); margin:10px 0;">文案资产：${d.text || '无'}</p>
+                        <button onclick="exportVideo(${d.id})" style="width:100%; padding:12px; background:var(--ai-green); border:none; border-radius:10px; font-weight:bold; color:#000;">下载视频到手机相册</button>
+                        <button onclick="delVideo(${d.id})" style="width:100%; margin-top:10px; background:none; border:none; color:var(--accent); font-size:12px;">删除记录</button>
                     `;
                     list.appendChild(item); c.continue();
                 }
             };
         }
 
-        function download(id) {
-            db.transaction("assets").objectStore("assets").get(id).onsuccess = e => {
-                const url = URL.createObjectURL(e.target.result.video);
-                const a = document.createElement('a'); a.href = url; a.download = `Behold_Asset_${id}.mp4`; a.click();
+        function exportVideo(id) {
+            db.transaction("videos").objectStore("videos").get(id).onsuccess = e => {
+                const url = URL.createObjectURL(e.target.result.blob);
+                const a = document.createElement('a'); a.href = url; a.download = `Behold_Video_${id}.mp4`; a.click();
             };
         }
 
-        function del(id) { if(confirm("删除记录？")) { db.transaction("assets", "readwrite").objectStore("assets").delete(id); renderHistory(); } }
+        function delVideo(id) { if(confirm("确定删除？")) { db.transaction("videos", "readwrite").objectStore("videos").delete(id); loadHistory(); } }
 
+        function changeShape() {
+            shapeIdx = (shapeIdx + 1) % shapes.length;
+            document.getElementById('layer-sub').className = 'video-wrapper ' + shapes[shapeIdx];
+        }
+
+        function showScenes() {
+            const p = document.getElementById('scene-picker');
+            p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+            p.innerHTML = [
+                {n:'原景', u:''}, {n:'影棚', u:'https://images.unsplash.com/photo-1492684223066-81342ee5ff30'},
+                {n:'科技', u:'https://images.unsplash.com/photo-1518770660439-4636190af475'}
+            ].map(s => `<div class="scene-card" style="background-image:url('${s.u}')" onclick="applyScn('${s.u}')"></div>`).join('');
+        }
+        function applyScn(u) { document.getElementById('scene-bg').style.backgroundImage = u ? `url(${u})` : 'none'; document.getElementById('scene-picker').style.display='none'; }
+
+        function toggleSticker() {
+            const s = document.getElementById('sticker');
+            s.style.backgroundImage = s.style.backgroundImage ? 'none' : 'url(https://www.transparenttextures.com/patterns/carbon-fibre.png)';
+        }
+
+        // 交互
         function initResize(e, id) {
             e.stopPropagation(); const el = document.getElementById(id);
             const sw = el.offsetWidth, sh = el.offsetHeight, sx = e.clientX, sy = e.clientY;
@@ -244,7 +258,7 @@
             window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
         }
 
-        function makeDraggable(id) {
+        function makeDrag(id) {
             const el = document.getElementById(id); let off = [0,0], down = false;
             el.onpointerdown = e => { if(e.target.className==='resizer'||e.target.tagName==='TEXTAREA') return; down=true; off=[el.offsetLeft-e.clientX, el.offsetTop-e.clientY]; el.setPointerCapture(e.pointerId); };
             el.onpointermove = e => { if(down){ el.style.left=(e.clientX+off[0])+'px'; el.style.top=(e.clientY+off[1])+'px'; }};
@@ -252,8 +266,8 @@
         }
 
         window.onload = () => {
-            init();
-            ['layer-main', 'layer-sub', 'prompter'].forEach(makeDraggable);
+            initCamera();
+            ['layer-main', 'layer-sub', 'prompter'].forEach(makeDrag);
         };
     </script>
 </body>
