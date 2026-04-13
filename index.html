@@ -5,26 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Behold - 君临奇境</title>
     <style>
-        :root { --accent: #ff3b30; --ai-green: #00ff88; }
+        :root { --accent: #ff3b30; --ai-green: #00ff88; --shutter: #eee; }
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; touch-action: none; }
 
         /* 背景层 */
         #scene-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: 0.5; transition: 0.5s; }
         
-        /* 智能视频容器：确保居中 */
+        /* 自由视频容器：彻底消除边缘残留 */
         .video-wrapper { 
             position: absolute; overflow: hidden; display: flex; align-items: center; justify-content: center;
-            background: #111; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #000; transition: border-radius 0.3s, transform 0.2s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 2px solid var(--ai-green);
+            touch-action: none;
         }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
         /* 主画面布局 */
         #main-wrapper { inset: 0; z-index: 1; }
 
         /* 自由气泡/分屏窗口 */
         #bubble-wrapper {
-            z-index: 100; border: 1.5px solid var(--ai-green); border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: #000;
+            z-index: 100;
         }
 
         /* 提词器：极简透明 */
@@ -40,17 +42,23 @@
 
         /* 极简文字导航栏 */
         .nav-bar {
-            position: fixed; bottom: 30px; width: 92%; left: 4%;
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(20,20,20,0.9); padding: 12px 20px; border-radius: 20px; z-index: 200;
-            box-sizing: border-box; border: 0.5px solid rgba(255,255,255,0.1);
+            position: fixed; bottom: 30px; width: 94%; left: 3%;
+            display: flex; justify-content: space-around; align-items: center;
+            background: rgba(20,20,20,0.9); padding: 10px 0; border-radius: 30px; z-index: 200;
         }
-        .nav-btn { background: none; border: none; color: #fff; font-size: 15px; font-weight: 500; letter-spacing: 1px; }
+        .nav-btn { background: none; border: none; color: #fff; font-size: 14px; font-weight: 500; }
         
-        /* 录制按钮 */
-        .rec-btn { width: 55px; height: 55px; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .rec-core { width: 44px; height: 44px; background: var(--accent); border-radius: 50%; transition: 0.3s; }
-        .recording .rec-core { border-radius: 4px; transform: scale(0.5); }
+        /* 极简快门录制按钮 */
+        .shutter-btn {
+            width: 70px; height: 70px; border-radius: 50%; background: #333;
+            border: 5px solid var(--shutter); display: flex; align-items: center; justify-content: center;
+            position: relative; transition: 0.2s;
+        }
+        .shutter-inner {
+            width: 50px; height: 50px; border-radius: 50%; background: var(--accent);
+            border: 2px solid #000; transition: 0.3s;
+        }
+        .recording .shutter-inner { border-radius: 12px; transform: scale(0.7); box-shadow: 0 0 20px var(--accent); }
 
         /* 历程面板 */
         #data-panel {
@@ -59,10 +67,10 @@
         }
 
         /* 1. 形状库优化 */
-        .shape-circle { clip-path: circle(50% at 50% 50%); }
-        .shape-square { border-radius: 20px; }
+        .shape-circle { border-radius: 50% !important; border: 2px solid var(--ai-green); }
+        .shape-square { border-radius: 24px; clip-path: none; }
         .shape-trapezoid { clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%); border-radius: 15px; }
-        .shape-heart { clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.568-3.956 4.407-4.457 5.719-4.457 2.213 0 5.281 1.4 5.281 5.191 0 4.105-5.37 8.863-11 14.402z'); transform: scale(5); }
+        .shape-heart { clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.568-3.956 4.407-4.457 5.719-4.457 2.213 0 5.281 1.4 5.281 5.191 0 4.105-5.37 8.863-11 14.402z'); }
         .shape-star { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
 
         /* 2. 布局缩放逻辑 */
@@ -79,17 +87,18 @@
             border-left: 4px solid var(--ai-green);
         }
 
+        /* 缩放手柄 */
+        .resizer { width: 30px; height: 30px; background: rgba(255,255,255,0.2); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 110; border-radius: 50% 0 0 0; }
+
+        /* 场景选择器 */
         #scene-picker {
-            position: fixed; bottom: 100px; width: 100%; display: none; flex-direction: row;
+            position: fixed; bottom: 120px; width: 100%; display: none; flex-direction: row;
             background: rgba(0,0,0,0.8); backdrop-filter: blur(15px);
-            padding: 15px; gap: 10px; overflow-x: auto; z-index: 250;
+            padding: 15px; gap: 15px; overflow-x: auto; z-index: 250;
             box-sizing: border-box;
         }
-        .scene-thumb {
-            flex: 0 0 80px; height: 60px; border-radius: 8px; border: 1px solid #444;
-            background-size: cover; text-align: center; font-size: 10px; line-height: 60px;
-            background-color: #222; color: #fff;
-        }
+        .scene-card { flex: 0 0 100px; height: 70px; border-radius: 10px; border: 1px solid #555; background-size: cover; position: relative; background-color: #222; }
+        .scene-card span { position: absolute; bottom: 5px; width: 100%; text-align: center; font-size: 10px; background: rgba(0,0,0,0.5); color: #fff; }
 
         .ai-badge {
             position: absolute; top: 10px; right: 10px; background: var(--ai-green);
@@ -101,12 +110,14 @@
 
     <div id="scene-bg"></div>
     
-    <div id="main-wrapper" class="video-wrapper">
+    <div id="main-wrapper" class="video-wrapper shape-square" style="top:10%; left:5%; width:90%; height:40%;">
         <video id="video-bg" autoplay playsinline muted></video>
+        <div class="resizer" onpointerdown="startResize(event, 'main-wrapper')"></div>
     </div>
 
-    <div id="bubble-wrapper" class="video-wrapper shape-square" style="top: 450px; left: 30px; width: 140px; height: 180px;">
+    <div id="bubble-wrapper" class="video-wrapper shape-circle" style="top:55%; left:25%; width:150px; height:150px;">
         <video id="video-bubble" autoplay playsinline muted></video>
+        <div class="resizer" onpointerdown="startResize(event, 'bubble-wrapper')"></div>
     </div>
 
     <div class="prompter-box">
@@ -118,7 +129,7 @@
     <div class="nav-bar">
         <button class="nav-btn" onclick="toggleData()">历程</button>
         <button class="nav-btn" onclick="openScenePicker()">场景</button>
-        <button class="rec-btn" onclick="handleRecord()"><div class="rec-core"></div></button>
+        <div class="shutter-btn" onclick="handleRecord()"><div class="shutter-inner"></div></div>
         <button class="nav-btn" onclick="switchCam()">切换</button>
         <button class="nav-btn" onclick="toggleLayout()">布局</button>
         <button class="nav-btn" onclick="changeShape()">形状</button>
@@ -157,9 +168,9 @@
         const shapes = ['shape-square', 'shape-circle', 'shape-trapezoid', 'shape-heart', 'shape-star'];
         let shapeIdx = 0;
         function changeShape() {
-            const bub = document.getElementById('bubble-wrapper');
-            bub.className = 'video-wrapper ' + shapes[shapeIdx];
             shapeIdx = (shapeIdx + 1) % shapes.length;
+            document.getElementById('bubble-wrapper').className = 'video-wrapper ' + shapes[shapeIdx];
+            document.getElementById('main-wrapper').className = 'video-wrapper ' + shapes[shapeIdx];
         }
 
         async function startSystem() {
@@ -184,26 +195,57 @@
             startSystem();
         }
 
-        // 3. 布局逻辑：自动缩小并居中
+        // 1. 全自由拖拽逻辑
+        function makeDraggable(id) {
+            const el = document.getElementById(id);
+            let offset = [0,0], isDown = false;
+            el.onpointerdown = e => {
+                if (e.target.className === 'resizer') return;
+                isDown = true; el.setPointerCapture(e.pointerId);
+                offset = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY];
+            };
+            el.onpointermove = e => {
+                if (!isDown) return;
+                el.style.left = (e.clientX + offset[0]) + 'px';
+                el.style.top = (e.clientY + offset[1]) + 'px';
+            };
+            el.onpointerup = () => isDown = false;
+        }
+
+        // 2. 自由缩放逻辑
+        function startResize(e, id) {
+            e.stopPropagation();
+            const el = document.getElementById(id);
+            const startW = el.offsetWidth, startH = el.offsetHeight;
+            const startX = e.clientX, startY = e.clientY;
+            
+            const doResize = e => {
+                el.style.width = (startW + (e.clientX - startX)) + 'px';
+                el.style.height = (startH + (e.clientY - startY)) + 'px';
+            };
+            const stopResize = () => {
+                window.removeEventListener('pointermove', doResize);
+                window.removeEventListener('pointerup', stopResize);
+            };
+            window.addEventListener('pointermove', doResize);
+            window.addEventListener('pointerup', stopResize);
+        }
+
+        // 3. 布局快速预设 (依然支持后期随意拖动)
         function toggleLayout() {
             layoutIdx = (layoutIdx + 1) % 3;
             const main = document.getElementById('main-wrapper');
             const bub = document.getElementById('bubble-wrapper');
             
-            [main, bub].forEach(el => el.classList.remove('layout-split'));
-
             if (layoutIdx === 1) { // 左右
-                main.style.cssText = "left:5%; top:10%; width:42%; height:60%;";
-                bub.style.cssText = "right:5%; top:10%; width:42%; height:60%;";
-                [main, bub].forEach(el => el.classList.add('layout-split'));
+                main.style.cssText = "top:15%; left:5%; width:43%; height:50%;";
+                bub.style.cssText = "top:15%; right:5%; width:43%; height:50%; left:auto;";
             } else if (layoutIdx === 2) { // 上下
-                main.style.cssText = "left:10%; top:5%; width:80%; height:35%;";
-                bub.style.cssText = "left:10%; bottom:25%; width:80%; height:35%;";
-                [main, bub].forEach(el => el.classList.add('layout-split'));
-            } else { // 悬浮
-                main.style.cssText = "inset:0; width:100%; height:100%;";
-                bub.style.cssText = "top:450px; left:30px; width:140px; height:180px;";
-                bub.className = 'video-wrapper shape-square';
+                main.style.cssText = "top:5%; left:10%; width:80%; height:35%;";
+                bub.style.cssText = "bottom:20%; left:10%; width:80%; height:35%; top:auto;";
+            } else { // 重置为默认
+                main.style.cssText = "top:10%; left:5%; width:90%; height:40%;";
+                bub.style.cssText = "top:55%; left:25%; width:150px; height:150px;";
             }
         }
 
@@ -216,10 +258,10 @@
                 mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
                 mediaRecorder.onstop = saveVideo;
                 mediaRecorder.start();
-                document.body.classList.add('recording');
+                document.querySelector('.shutter-btn').classList.add('recording');
             } else {
                 mediaRecorder.stop();
-                document.body.classList.remove('recording');
+                document.querySelector('.shutter-btn').classList.remove('recording');
             }
             isRecording = !isRecording;
         }
@@ -298,8 +340,8 @@
             const picker = document.getElementById('scene-picker');
             picker.style.display = picker.style.display === 'flex' ? 'none' : 'flex';
             picker.innerHTML = sceneLibrary.map((s, idx) => `
-                <div class="scene-thumb" style="background-image:url('${s.url}');" onclick="applyScene('${s.url}')">
-                    ${s.name}
+                <div class="scene-card" style="background-image:url('${s.url}')" onclick="applyScene('${s.url}')">
+                    <span>${s.name}</span>
                 </div>
             `).join('');
         }
@@ -309,13 +351,11 @@
             document.getElementById('scene-picker').style.display = 'none';
         }
 
-        let isDragging = false, sx, sy;
-        const bub = document.getElementById('bubble-wrapper');
-        bub.onpointerdown = e => { if(layoutIdx !== 0) return; isDragging = true; sx = e.clientX - bub.offsetLeft; sy = e.clientY - bub.offsetTop; bub.setPointerCapture(e.pointerId); };
-        bub.onpointermove = e => { if(!isDragging) return; bub.style.left = (e.clientX - sx) + 'px'; bub.style.top = (e.clientY - sy) + 'px'; };
-        bub.onpointerup = () => isDragging = false;
-
-        window.onload = startSystem;
+        window.onload = () => { 
+            startSystem(); 
+            makeDraggable('main-wrapper'); 
+            makeDraggable('bubble-wrapper'); 
+        };
     </script>
 </body>
 </html>
