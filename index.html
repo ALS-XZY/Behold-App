@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Behold - 君临奇境</title>
     <style>
-        :root { --accent: #ff3b30; --ai-green: #00ff88; --shutter: #eee; }
+        :root { --accent: #ff3b30; --ai-green: #00ff88; --shutter-color: #444; }
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; touch-action: none; }
 
         /* 背景层 */
@@ -29,41 +29,52 @@
             z-index: 100;
         }
 
-        /* 提词器：极简透明 */
-        .prompter-box {
-            position: fixed; top: 15%; width: 86%; left: 7%; height: 160px;
-            z-index: 150; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
-            border-radius: 16px; padding: 12px; pointer-events: auto;
+        /* 悬浮提词器 */
+        #prompter {
+            position: absolute; top: 150px; left: 20px; width: 300px; height: 150px;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);
+            display: flex; flex-direction: column; z-index: 100;
         }
         #script-input {
-            width: 100%; height: 100%; background: transparent; border: none;
-            color: var(--ai-green); font-size: 20px; font-weight: 500; resize: none; outline: none;
+            flex: 1; background: transparent; border: none; color: #fff;
+            padding: 10px; font-size: 16px; outline: none; resize: none;
         }
+        .prompter-tools { display: flex; align-items: center; padding: 5px; background: rgba(255,255,255,0.1); border-radius: 0 0 12px 12px; }
+        input[type=range] { flex: 1; accent-color: var(--ai-green); }
 
         /* 极简文字导航栏 */
         .nav-bar {
             position: fixed; bottom: 30px; width: 94%; left: 3%;
             display: flex; justify-content: space-around; align-items: center;
-            background: rgba(20,20,20,0.9); padding: 10px 0; border-radius: 30px; z-index: 200;
+            background: rgba(20,20,20,0.9); padding: 10px 0; border-radius: 35px; z-index: 200;
         }
         .nav-btn { background: none; border: none; color: #fff; font-size: 14px; font-weight: 500; }
         
-        /* 极简快门录制按钮 */
-        .shutter-btn {
-            width: 70px; height: 70px; border-radius: 50%; background: #333;
-            border: 5px solid var(--shutter); display: flex; align-items: center; justify-content: center;
-            position: relative; transition: 0.2s;
+        /* 机械快门按钮 */
+        .shutter-wrap { width: 75px; height: 75px; position: relative; cursor: pointer; }
+        .shutter-blade {
+            position: absolute; inset: 0; background: var(--accent);
+            clip-path: polygon(50% 50%, 100% 0, 100% 100%); /* 模拟单片扇叶 */
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(0,0,0,0.2);
         }
-        .shutter-inner {
-            width: 50px; height: 50px; border-radius: 50%; background: var(--accent);
-            border: 2px solid #000; transition: 0.3s;
-        }
-        .recording .shutter-inner { border-radius: 12px; transform: scale(0.7); box-shadow: 0 0 20px var(--accent); }
+        /* 8片扇叶布局 */
+        .blade-1 { transform: rotate(0deg) translate(0, -5px); }
+        .blade-2 { transform: rotate(45deg) translate(0, -5px); }
+        .blade-3 { transform: rotate(90deg) translate(0, -5px); }
+        .blade-4 { transform: rotate(135deg) translate(0, -5px); }
+        .blade-5 { transform: rotate(180deg) translate(0, -5px); }
+        .blade-6 { transform: rotate(225deg) translate(0, -5px); }
+        .blade-7 { transform: rotate(270deg) translate(0, -5px); }
+        .blade-8 { transform: rotate(315deg) translate(0, -5px); }
+
+        .recording .shutter-blade { transform: rotate(var(--rot)) scale(1.2) translate(0, 0); }
 
         /* 历程面板 */
         #data-panel {
             position: fixed; inset: 0; background: #000; z-index: 300; display: none;
-            flex-direction: column; padding: 60px 25px;
+            flex-direction: column; padding: 50px 20px;
         }
 
         /* 1. 形状库优化 */
@@ -82,13 +93,19 @@
         }
 
         /* 3. 历程卡片 */
-        .history-item {
-            background: #1a1a1a; margin-bottom: 15px; padding: 15px; border-radius: 15px;
-            border-left: 4px solid var(--ai-green);
+        .history-card {
+            background: #1a1a1a; margin-bottom: 10px; border-radius: 12px;
+            overflow: hidden; position: relative; transition: transform 0.3s;
+        }
+        .card-content { padding: 15px; position: relative; z-index: 2; background: #1a1a1a; }
+        .delete-btn {
+            position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
+            background: var(--accent); color: white; display: flex; align-items: center;
+            justify-content: center; z-index: 1; font-weight: bold;
         }
 
         /* 缩放手柄 */
-        .resizer { width: 30px; height: 30px; background: rgba(255,255,255,0.2); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 110; border-radius: 50% 0 0 0; }
+        .resizer { width: 25px; height: 25px; background: rgba(255,255,255,0.3); position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 110; border-radius: 50% 0 0 0; }
 
         /* 场景选择器 */
         #scene-picker {
@@ -112,16 +129,21 @@
     
     <div id="main-wrapper" class="video-wrapper shape-square" style="top:10%; left:5%; width:90%; height:40%;">
         <video id="video-bg" autoplay playsinline muted></video>
-        <div class="resizer" onpointerdown="startResize(event, 'main-wrapper')"></div>
+        <div class="resizer" onpointerdown="initResize(event, 'main-wrapper')"></div>
     </div>
 
     <div id="bubble-wrapper" class="video-wrapper shape-circle" style="top:55%; left:25%; width:150px; height:150px;">
         <video id="video-bubble" autoplay playsinline muted></video>
-        <div class="resizer" onpointerdown="startResize(event, 'bubble-wrapper')"></div>
+        <div class="resizer" onpointerdown="initResize(event, 'bubble-wrapper')"></div>
     </div>
 
-    <div class="prompter-box">
-        <textarea id="script-input" placeholder="输入文案..."></textarea>
+    <div id="prompter">
+        <textarea id="script-input" placeholder="输入文案或开始录制以语音转文字..."></textarea>
+        <div class="prompter-tools">
+            <span style="font-size:10px; margin-right:5px;">透明度</span>
+            <input type="range" min="0.1" max="1" step="0.1" value="0.5" oninput="adjOpac(this.value)">
+        </div>
+        <div class="resizer" onpointerdown="initResize(event, 'prompter')"></div>
     </div>
 
     <div id="scene-picker"></div>
@@ -129,14 +151,23 @@
     <div class="nav-bar">
         <button class="nav-btn" onclick="toggleData()">历程</button>
         <button class="nav-btn" onclick="openScenePicker()">场景</button>
-        <div class="shutter-btn" onclick="handleRecord()"><div class="shutter-inner"></div></div>
+        <div class="shutter-wrap" id="shutter" onclick="handleRecord()">
+            <div class="shutter-blade blade-1" style="--rot:0deg"></div>
+            <div class="shutter-blade blade-2" style="--rot:45deg"></div>
+            <div class="shutter-blade blade-3" style="--rot:90deg"></div>
+            <div class="shutter-blade blade-4" style="--rot:135deg"></div>
+            <div class="shutter-blade blade-5" style="--rot:180deg"></div>
+            <div class="shutter-blade blade-6" style="--rot:225deg"></div>
+            <div class="shutter-blade blade-7" style="--rot:270deg"></div>
+            <div class="shutter-blade blade-8" style="--rot:315deg"></div>
+        </div>
         <button class="nav-btn" onclick="switchCam()">切换</button>
         <button class="nav-btn" onclick="toggleLayout()">布局</button>
         <button class="nav-btn" onclick="changeShape()">形状</button>
     </div>
 
     <div id="data-panel">
-        <h2 style="color:var(--ai-green)">成长轨迹</h2>
+        <h2 style="color:var(--ai-green)">成长轨迹 Assets</h2>
         <div id="history-list" style="flex: 1; overflow-y: auto; margin: 20px 0;"></div>
         <button onclick="toggleData()" style="padding: 18px; background: #222; border: none; color: #fff; border-radius: 12px;">返回</button>
     </div>
@@ -146,15 +177,33 @@
         let facingMode = "user";
         let startTime;
         let layoutIdx = 0;
+        let recognition;
+        let voiceText = "";
 
         // 1. 初始化本地数据库 (IndexedDB)
         let db;
-        const request = indexedDB.open("BeholdDB", 1);
+        const request = indexedDB.open("BeholdAssetDB", 1);
         request.onupgradeneeded = e => {
             db = e.target.result;
-            db.createObjectStore("records", { keyPath: "id" });
+            db.createObjectStore("assets", { keyPath: "id" });
         };
         request.onsuccess = e => db = e.target.result;
+
+        // 语音识别初始化
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'zh-CN';
+            recognition.onresult = e => {
+                let interim = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) voiceText += e.results[i][0].transcript;
+                    else interim += e.results[i][0].transcript;
+                }
+                document.getElementById('script-input').value = voiceText + interim;
+            };
+        }
 
         const sceneLibrary = [
             { name: '原生', url: '' },
@@ -187,6 +236,7 @@
                 const transform = facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
                 bgV.style.transform = transform;
                 bubV.style.transform = transform;
+                window.localStream = currentStream;
             } catch (err) { alert("镜头启动失败，请检查权限"); }
         }
 
@@ -200,7 +250,7 @@
             const el = document.getElementById(id);
             let offset = [0,0], isDown = false;
             el.onpointerdown = e => {
-                if (e.target.className === 'resizer') return;
+                if (e.target.className === 'resizer' || e.target.tagName === 'TEXTAREA') return;
                 isDown = true; el.setPointerCapture(e.pointerId);
                 offset = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY];
             };
@@ -213,7 +263,7 @@
         }
 
         // 2. 自由缩放逻辑
-        function startResize(e, id) {
+        function initResize(e, id) {
             e.stopPropagation();
             const el = document.getElementById(id);
             const startW = el.offsetWidth, startH = el.offsetHeight;
@@ -230,6 +280,8 @@
             window.addEventListener('pointermove', doResize);
             window.addEventListener('pointerup', stopResize);
         }
+
+        function adjOpac(v) { document.getElementById('prompter').style.background = `rgba(0,0,0,${v})`; }
 
         // 3. 布局快速预设 (依然支持后期随意拖动)
         function toggleLayout() {
@@ -250,46 +302,50 @@
         }
 
         function handleRecord() {
-            if (!isRecording) {
+            isRecording = !isRecording;
+            const btn = document.getElementById('shutter');
+            btn.classList.toggle('recording', isRecording);
+
+            if (isRecording) {
                 recordedChunks = [];
+                voiceText = "";
                 startTime = Date.now();
-                const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+                const options = { mimeType: 'video/mp4' };
                 mediaRecorder = new MediaRecorder(currentStream, options);
                 mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
                 mediaRecorder.onstop = saveVideo;
                 mediaRecorder.start();
-                document.querySelector('.shutter-btn').classList.add('recording');
+                if(recognition) recognition.start();
             } else {
                 mediaRecorder.stop();
-                document.querySelector('.shutter-btn').classList.remove('recording');
+                if(recognition) recognition.stop();
             }
-            isRecording = !isRecording;
         }
 
         // 4. 录制并存入历程 (不自动下载)
         async function saveVideo() {
-            const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-            const userText = document.getElementById('script-input').value || "未录入文案";
+            const videoBlob = new Blob(recordedChunks, { type: 'video/mp4' });
+            const userText = document.getElementById('script-input').value || "未检测到语音";
             const duration = Math.floor((Date.now() - startTime) / 1000);
             
             const record = {
                 id: Date.now(),
                 date: new Date().toLocaleString(),
                 video: videoBlob,
-                text: userText,
+                content: userText,
                 score: Math.min(100, 80 + Math.random() * 20).toFixed(0),
-                suggestion: "AI 建议：保持目前节奏，在结尾处增加互动引导。"
+                advise: "AI 建议：保持目前节奏，在结尾处增加互动引导。"
             };
 
-            const tx = db.transaction("records", "readwrite");
-            tx.objectStore("records").add(record);
-            alert("已存入历程，可前往查看并导出 MP4");
+            const tx = db.transaction("assets", "readwrite");
+            tx.objectStore("assets").add(record);
+            alert("资产已存入历程，可前往查看并导出 MP4");
         }
 
         // 5. 从历程导出 MP4
-        function exportMP4(id) {
-            const tx = db.transaction("records", "readonly");
-            const getReq = tx.objectStore("records").get(id);
+        function downloadVid(id) {
+            const tx = db.transaction("assets", "readonly");
+            const getReq = tx.objectStore("assets").get(id);
             getReq.onsuccess = () => {
                 const data = getReq.result;
                 const url = URL.createObjectURL(data.video);
@@ -300,6 +356,18 @@
             };
         }
 
+        function deleteAsset(id) {
+            if(confirm("确定删除此项资产吗？")) {
+                db.transaction("assets", "readwrite").objectStore("assets").delete(id);
+                toggleData();
+            }
+        }
+
+        function expandCard(el) {
+            const det = el.querySelector('.details');
+            det.style.display = det.style.display === 'none' ? 'block' : 'none';
+        }
+
         function toggleData() {
             const panel = document.getElementById('data-panel');
             const list = document.getElementById('history-list');
@@ -307,33 +375,39 @@
 
             if (panel.style.display === 'flex') {
                 list.innerHTML = "";
-                const tx = db.transaction("records", "readonly");
-                tx.objectStore("records").openCursor(null, "prev").onsuccess = e => {
+                const tx = db.transaction("assets", "readonly");
+                tx.objectStore("assets").openCursor(null, "prev").onsuccess = e => {
                     const cursor = e.target.result;
                     if (cursor) {
                         const item = cursor.value;
-                        list.innerHTML += `
-                            <div class="history-item">
-                                <div style="display:flex; justify-content:space-between;">
-                                    <strong>评分：${item.score}</strong>
-                                    <small>${item.date}</small>
+                        const card = document.createElement('div');
+                        card.className = 'history-card';
+                        card.innerHTML = `
+                            <div class="delete-btn" onclick="deleteAsset(${item.id})"><button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;">删除</button></div>
+                            <div class="card-content" onclick="expandCard(this)">
+                                <div style="display:flex; justify-content:space-between">
+                                    <b>评分：${item.score}</b> <small>${item.date}</small>
                                 </div>
-                                <p style="font-size:12px; color:var(--ai-green); margin:8px 0;">语音文案：${item.text}</p>
-                                <p style="font-size:11px; color:#888;">${item.suggestion}</p>
-                                <div style="display:flex; gap:10px; margin-top:10px;">
-                                    <button onclick="copyText('${item.text}')" style="font-size:11px; padding:5px; background:#333; color:#fff; border:none; border-radius:5px;">复制文案</button>
-                                    <button onclick="exportMP4(${item.id})" style="font-size:11px; padding:5px; background:var(--ai-green); color:#000; border:none; border-radius:5px;">生成MP4并保存</button>
+                                <div class="details" style="display:none; margin-top:10px; font-size:13px; border-top:1px solid #333; padding-top:10px;">
+                                    <p style="color:var(--ai-green)">语音资产：${item.content}</p>
+                                    <p>AI 建议：${item.advise}</p>
+                                    <button onclick="downloadVid(${item.id})" style="width:100%; padding:10px; background:var(--ai-green); border:none; border-radius:8px; font-weight:bold; margin-top:10px;">下载 MP4 到相册</button>
                                 </div>
                             </div>
                         `;
+                        // 左右滑动删除手势模拟
+                        let startX;
+                        card.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+                        card.addEventListener('touchmove', e => {
+                            let diff = e.touches[0].clientX - startX;
+                            if(diff < -50) card.style.transform = "translateX(-80px)";
+                            if(diff > 50) card.style.transform = "translateX(0)";
+                        });
+                        list.appendChild(card);
                         cursor.continue();
                     }
                 };
             }
-        }
-
-        function copyText(txt) {
-            navigator.clipboard.writeText(txt).then(() => alert("文案已复制"));
         }
 
         function openScenePicker() {
@@ -355,6 +429,7 @@
             startSystem(); 
             makeDraggable('main-wrapper'); 
             makeDraggable('bubble-wrapper'); 
+            makeDraggable('prompter'); 
         };
     </script>
 </body>
